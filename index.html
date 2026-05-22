@@ -243,10 +243,10 @@ canvas.width = W; canvas.height = H;
 
 // score threshold, hp, attack type, reward pts, movement speed, size (optional)
 const BOSS_TIERS = [
-  { scoreThreshold:  500, hp:  25, type: 'minispread', pts:  150, dx: 1.5, color: '#1a3a1a', glow: '#4f4', label: 'МИНИ-БОСС', bw: 80, bh: 55 },
-  { scoreThreshold: 1000, hp:  60, type: 'spread',     pts:  300, dx: 2.0, color: '#7f00ff', glow: '#f0f', label: 'BOSS I'   },
-  { scoreThreshold: 2500, hp: 140, type: 'spiral',     pts:  700, dx: 2.8, color: '#cc2200', glow: '#f84', label: 'BOSS II'  },
-  { scoreThreshold: 5000, hp: 260, type: 'aimed',      pts: 1500, dx: 3.5, color: '#b8860b', glow: '#ff0', label: 'BOSS III' },
+  { scoreThreshold:  500, hp:  25, type: 'minispread', pts:  150, dx: 4.0, color: '#1a3a1a', glow: '#4f4', label: 'МИНИ-БОСС', bw: 80, bh: 55 },
+  { scoreThreshold: 1000, hp:  60, type: 'spread',     pts:  300, dx: 4.0, color: '#7f00ff', glow: '#f0f', label: 'BOSS I'   },
+  { scoreThreshold: 2500, hp: 140, type: 'spiral',     pts:  700, dx: 5.6, color: '#cc2200', glow: '#f84', label: 'BOSS II'  },
+  { scoreThreshold: 5000, hp: 260, type: 'aimed',      pts: 1500, dx: 7.0, color: '#b8860b', glow: '#ff0', label: 'BOSS III' },
 ];
 
 let state = 'menu';
@@ -265,13 +265,13 @@ function initStars() {
     x: Math.random() * W,
     y: Math.random() * H,
     r: Math.random() * 1.5 + 0.3,
-    speed: Math.random() * 1.5 + 0.3,
+    speed: Math.random() * 3.0 + 0.6,
     alpha: Math.random() * 0.7 + 0.3
   }));
 }
 
 function makePlayer(x, color, glowColor) {
-  return { x, y: H - 80, w: 36, h: 40, speed: 4.25, lives: 3,
+  return { x, y: H - 80, w: 36, h: 40, speed: 8.5, lives: 3,
            invincible: 0, hitFlash: 0, shootCooldown: 0, trail: [],
            tripleShot: false, color, glowColor, alive: true };
 }
@@ -426,9 +426,9 @@ function drawShipObj(obj) {
 
 function spawnEnemy() {
   const types = [
-    { w: 32, h: 28, hp: 1, speed: 1.5 + level*0.3, color: '#f44', glowColor: '#f00', pts: 10, wave: false, canShoot: false },
-    { w: 28, h: 24, hp: 1, speed: 2.5 + level*0.4, color: '#fa0', glowColor: '#f80', pts: 15, wave: true,  canShoot: false },
-    { w: 40, h: 34, hp: 3, speed: 0.8 + level*0.2, color: '#08f', glowColor: '#06f', pts: 30, wave: false, canShoot: true  },
+    { w: 32, h: 28, hp: 1, speed: 3.0 + level*0.6, color: '#f44', glowColor: '#f00', pts: 10, wave: false, canShoot: false },
+    { w: 28, h: 24, hp: 1, speed: 5.0 + level*0.8, color: '#fa0', glowColor: '#f80', pts: 15, wave: true,  canShoot: false },
+    { w: 40, h: 34, hp: 3, speed: 1.6 + level*0.4, color: '#08f', glowColor: '#06f', pts: 30, wave: false, canShoot: true  },
   ];
   const t = types[Math.floor(Math.random() * (level < 3 ? 2 : 3))];
   enemies.push({ ...t, x: Math.random()*(W-80)+40, y: -30,
@@ -450,30 +450,30 @@ function bossShoot() {
   if (boss.type === 'minispread') {
     for (let i = -2; i <= 2; i++) {
       const a = Math.PI/2 + i*0.26;
-      boss.bullets.push({ x: boss.x, y: boss.y+boss.h/2, vx: Math.cos(a)*2.0, vy: Math.sin(a)*2.0 });
+      boss.bullets.push({ x: boss.x, y: boss.y+boss.h/2, vx: Math.cos(a)*5.0, vy: Math.sin(a)*5.0 });
     }
     boss.shootTimer = 180;
   } else if (boss.type === 'spread') {
     for (let i = -3; i <= 3; i++) {
       const a = Math.PI/2 + i*0.22;
-      boss.bullets.push({ x: boss.x, y: boss.y+boss.h/2, vx: Math.cos(a)*3.5, vy: Math.sin(a)*3.5 });
+      boss.bullets.push({ x: boss.x, y: boss.y+boss.h/2, vx: Math.cos(a)*7.0, vy: Math.sin(a)*7.0 });
     }
     boss.shootTimer = 30;
   } else if (boss.type === 'spiral') {
     for (let i = 0; i < 5; i++) {
       const a = boss.shootAngle + (i/5)*Math.PI*2;
-      boss.bullets.push({ x: boss.x, y: boss.y, vx: Math.cos(a)*2.8, vy: Math.sin(a)*2.8 });
+      boss.bullets.push({ x: boss.x, y: boss.y, vx: Math.cos(a)*5.6, vy: Math.sin(a)*5.6 });
     }
     boss.shootAngle += 0.3; boss.shootTimer = 28;
   } else if (boss.type === 'aimed') {
     if (p1 && p1.lives > 0) {
       const a = Math.atan2(p1.y - boss.y, p1.x - boss.x);
       for (let i = -2; i <= 2; i++)
-        boss.bullets.push({ x: boss.x, y: boss.y, vx: Math.cos(a+i*0.18)*5, vy: Math.sin(a+i*0.18)*5 });
+        boss.bullets.push({ x: boss.x, y: boss.y, vx: Math.cos(a+i*0.18)*10, vy: Math.sin(a+i*0.18)*10 });
     }
     for (let i = 0; i < 10; i++) {
       const a = boss.shootAngle + (i/10)*Math.PI*2;
-      boss.bullets.push({ x: boss.x, y: boss.y, vx: Math.cos(a)*2.2, vy: Math.sin(a)*2.2 });
+      boss.bullets.push({ x: boss.x, y: boss.y, vx: Math.cos(a)*4.4, vy: Math.sin(a)*4.4 });
     }
     boss.shootAngle += 0.45; boss.shootTimer = 18;
   }
@@ -509,10 +509,10 @@ function updatePlayer(dt) {
 
   p1.shootCooldown -= dt;
   if (p1.shootCooldown <= 0) {
-    bullets.push({ x: p1.x, y: p1.y-p1.h/2, vy: -10, fromPlayer: true, color: p1.glowColor });
+    bullets.push({ x: p1.x, y: p1.y-p1.h/2, vy: -26, fromPlayer: true, color: p1.glowColor });
     if (p1.tripleShot || level >= 4) {
-      bullets.push({ x: p1.x-14, y: p1.y, vy: -10, fromPlayer: true, color: p1.glowColor });
-      bullets.push({ x: p1.x+14, y: p1.y, vy: -10, fromPlayer: true, color: p1.glowColor });
+      bullets.push({ x: p1.x-14, y: p1.y, vy: -26, fromPlayer: true, color: p1.glowColor });
+      bullets.push({ x: p1.x+14, y: p1.y, vy: -26, fromPlayer: true, color: p1.glowColor });
     }
     p1.shootCooldown = level >= 5 ? 10 : 15;
   }
@@ -535,7 +535,7 @@ function updateCompanions(dt) {
 
     c.shootCooldown -= dt;
     if (c.shootCooldown <= 0) {
-      bullets.push({ x: c.x, y: c.y-c.h/2, vy: -10, fromPlayer: true, color: c.glowColor });
+      bullets.push({ x: c.x, y: c.y-c.h/2, vy: -26, fromPlayer: true, color: c.glowColor });
       c.shootCooldown = 14;
     }
     if (c.invincible > 0) c.invincible -= dt;
@@ -591,7 +591,7 @@ function update(dt) {
   // Move enemies + collide with player/companion
   for (const e of enemies) {
     e.y += e.speed * dt;
-    if (e.wave) e.x += Math.sin(time*0.05 + e.waveOffset) * 2.5 * dt;
+    if (e.wave) e.x += Math.sin(time*0.1 + e.waveOffset) * 5.0 * dt;
     e.x = Math.max(e.w/2, Math.min(W-e.w/2, e.x));
 
     if (e.canShoot && level >= 3) {
@@ -599,7 +599,7 @@ function update(dt) {
       if (e.shootTimer <= 0) {
         if (p1 && p1.lives > 0) {
           const a = Math.atan2(p1.y-e.y, p1.x-e.x);
-          bullets.push({ x: e.x, y: e.y, vx: Math.cos(a)*3, vy: Math.sin(a)*3, fromPlayer: false });
+          bullets.push({ x: e.x, y: e.y, vx: Math.cos(a)*6, vy: Math.sin(a)*6, fromPlayer: false });
         }
         e.shootTimer = 60 + Math.random()*60;
       }
