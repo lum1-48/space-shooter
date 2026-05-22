@@ -147,6 +147,37 @@
   .records-table tr.new-record td { color: #ff0 !important; text-shadow: 0 0 8px #ff0; }
 
   #recordDisplay { color: #ff0; text-shadow: 0 0 6px #aa0; }
+
+  .changelog-wrap {
+    max-height: 380px;
+    overflow-y: auto;
+    width: 480px;
+    scrollbar-width: thin;
+    scrollbar-color: #0cf4 #0001;
+    padding-right: 6px;
+  }
+  .changelog-wrap::-webkit-scrollbar { width: 4px; }
+  .changelog-wrap::-webkit-scrollbar-thumb { background: #0cf5; border-radius: 2px; }
+
+  .cl-version {
+    color: #0cf;
+    font-size: 13px;
+    font-weight: bold;
+    letter-spacing: 2px;
+    margin: 14px 0 4px;
+    text-shadow: 0 0 8px #0cf;
+    border-bottom: 1px solid #0cf3;
+    padding-bottom: 4px;
+  }
+  .cl-version:first-child { margin-top: 0; }
+  .cl-item {
+    color: #aef;
+    font-size: 12px;
+    letter-spacing: 0.5px;
+    line-height: 1.9;
+    padding-left: 12px;
+  }
+  .cl-item::before { content: '• '; color: #0cf9; }
 </style>
 </head>
 <body>
