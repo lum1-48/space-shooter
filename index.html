@@ -778,8 +778,49 @@ function showOverlay(type) {
       <h1>SPACE<br>SHOOTER</h1>
       <p style="color:#aef;font-size:16px;letter-spacing:2px">WASD — движение</p>
       ${topRecs.length ? recordsHTML(topRecs, -1) : ''}
-      <button id="btn1p">НАЧАТЬ</button>`;
+      <button id="btn1p">НАЧАТЬ</button>
+      <button id="btnChangelog" class="btn-sm" style="margin-top:-4px;opacity:0.7">📋 ИЗМЕНЕНИЯ</button>`;
     document.getElementById('btn1p').addEventListener('click', startGame);
+    document.getElementById('btnChangelog').addEventListener('click', () => showOverlay('changelog'));
+
+  } else if (type === 'changelog') {
+    state = 'menu';
+    overlay.innerHTML = `
+      <h1 style="font-size:28px;letter-spacing:6px">ИЗМЕНЕНИЯ</h1>
+      <div class="changelog-wrap">
+        <div class="cl-version">v1.3 — 22.05.2026</div>
+        <div class="cl-item">Стабильный FPS на всех устройствах (delta-time)</div>
+        <div class="cl-item">Скорость игры одинакова на 60 и 120 Гц</div>
+        <div class="cl-item">Мини-босс: вдвое реже стреляет, пули медленнее</div>
+
+        <div class="cl-version">v1.2 — 21.05.2026</div>
+        <div class="cl-item">Система рекордов — топ-5 сохраняется в браузере</div>
+        <div class="cl-item">Рекорды отображаются в главном меню и после смерти</div>
+        <div class="cl-item">Напарник: 2 HP, быстрая атака, держится ближе</div>
+        <div class="cl-item">Накопление напарников — каждый выбор добавляет нового</div>
+        <div class="cl-item">Построение напарников пирамидой под игроком</div>
+
+        <div class="cl-version">v1.1 — 20.05.2026</div>
+        <div class="cl-item">Удалён режим двух игроков</div>
+        <div class="cl-item">Кнопка паузы ⏸ с меню: продолжить / заново / меню</div>
+        <div class="cl-item">Мини-босс на 500 очков</div>
+        <div class="cl-item">Выбор усиления после каждого убитого босса</div>
+        <div class="cl-item">Усиления: тройной выстрел, жизнь, напарник</div>
+        <div class="cl-item">Красная вспышка (3 мигания) при получении урона</div>
+        <div class="cl-item">Уменьшено количество пуль у Босса II (спираль)</div>
+        <div class="cl-item">Скорость игрока снижена на 15%</div>
+        <div class="cl-item">Только синие враги стреляют в игрока</div>
+        <div class="cl-item">Исправлено управление при любой раскладке клавиатуры</div>
+
+        <div class="cl-version">v1.0 — 19.05.2026</div>
+        <div class="cl-item">Базовый геймплей: корабль, враги, боссы</div>
+        <div class="cl-item">Три типа врагов: красный, оранжевый (волна), синий</div>
+        <div class="cl-item">Четыре босса: мини, Boss I, Boss II, Boss III</div>
+        <div class="cl-item">Звёздный фон, частицы, неоновая графика</div>
+        <div class="cl-item">Автоматическая стрельба игрока</div>
+      </div>
+      <button id="btnBack" class="btn-sm btn-warn" style="margin-top:8px">← НАЗАД</button>`;
+    document.getElementById('btnBack').addEventListener('click', () => showOverlay('menu'));
 
   } else if (type === 'dead') {
     const recs = saveRecord(score, level);
