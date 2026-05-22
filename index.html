@@ -418,9 +418,9 @@ function bossShoot() {
   if (boss.type === 'minispread') {
     for (let i = -2; i <= 2; i++) {
       const a = Math.PI/2 + i*0.26;
-      boss.bullets.push({ x: boss.x, y: boss.y+boss.h/2, vx: Math.cos(a)*2.4, vy: Math.sin(a)*2.4 });
+      boss.bullets.push({ x: boss.x, y: boss.y+boss.h/2, vx: Math.cos(a)*2.0, vy: Math.sin(a)*2.0 });
     }
-    boss.shootTimer = 48;
+    boss.shootTimer = 90;
   } else if (boss.type === 'spread') {
     for (let i = -3; i <= 3; i++) {
       const a = Math.PI/2 + i*0.22;
