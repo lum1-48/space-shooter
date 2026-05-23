@@ -435,6 +435,116 @@ let floatingTexts = [], bossTurrets = [];
 let statsEnemiesKilled = 0, statsBossesKilled = 0, statsHitsTaken = 0;
 let screenShake = 0;
 let enemySpawnInterval = 60, enemySpawnTimer = 0;
+let greenFlash = 0;
+
+// ── audio ─────────────────────────────────────────────────────────────────────
+
+let audioCtx = null, bossMasterGain = null, bossSeq = null;
+
+function ac() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+  return audioCtx;
+}
+
+function nt(freq, type, vol, dur, delay, freqEnd, dst) {
+  const c = ac(), t0 = c.currentTime + (delay || 0);
+  const o = c.createOscillator(), g = c.createGain();
+  o.connect(g); g.connect(dst || c.destination);
+  o.type = type; o.frequency.setValueAtTime(freq, t0);
+  if (freqEnd != null) o.frequency.exponentialRampToValueAtTime(Math.max(freqEnd, 1), t0 + dur);
+  g.gain.setValueAtTime(0.001, t0);
+  g.gain.linearRampToValueAtTime(vol, t0 + Math.min(0.015, dur * 0.15));
+  g.gain.exponentialRampToValueAtTime(0.001, t0 + dur);
+  o.start(t0); o.stop(t0 + dur + 0.05);
+}
+
+function sndBeamCharge() {
+  nt(160, 'sawtooth', 0.035, 0.75, 0,    1000);
+  [0, 0.13, 0.27, 0.42, 0.58].forEach((d, i) => nt(300 + i*120, 'sine', 0.02, 0.09, d));
+}
+
+function sndBeamFire() {
+  nt(1000, 'square',   0.07, 0.05, 0,    120);
+  nt(300,  'sawtooth', 0.04, 0.28, 0.03, 55);
+  nt(160,  'sine',     0.06, 0.18, 0.02);
+}
+
+const BM = {
+  melody: [440, 0, 392, 329.63, 0, 293.66, 329.63, 392,
+           440, 0, 329.63, 0, 261.63, 293.66, 0, 392],
+  bass:   [110, 0, 110, 0, 130.81, 0, 98, 0,
+           110, 0, 110, 0, 87.31,  0, 98, 0],
+};
+
+function startBossMusic(speed) {
+  stopBossMusic();
+  const c = ac();
+  bossMasterGain = c.createGain();
+  bossMasterGain.gain.setValueAtTime(0.001, c.currentTime);
+  bossMasterGain.gain.linearRampToValueAtTime(1, c.currentTime + 0.7);
+  bossMasterGain.connect(c.destination);
+  bossSeq = { active: true, step: 0, nextTime: c.currentTime, stepDur: 0.2 / (speed || 1) };
+  scheduleBossSeq();
+}
+
+function stopBossMusic() {
+  if (bossSeq) bossSeq.active = false;
+  bossSeq = null;
+  if (bossMasterGain) {
+    const mg = bossMasterGain; bossMasterGain = null;
+    try {
+      mg.gain.linearRampToValueAtTime(0.001, ac().currentTime + 0.4);
+      setTimeout(() => { try { mg.disconnect(); } catch(e) {} }, 600);
+    } catch(e) {}
+  }
+}
+
+function scheduleBossSeq() {
+  if (!bossSeq || !bossSeq.active) return;
+  const c = ac(), { stepDur } = bossSeq;
+  if (bossSeq.nextTime < c.currentTime - 0.5) bossSeq.nextTime = c.currentTime;
+  while (bossSeq.nextTime < c.currentTime + 0.45) {
+    const s = bossSeq.step % 16, t = bossSeq.nextTime, mg = bossMasterGain;
+    if (!mg) break;
+    const mf = BM.melody[s];
+    if (mf) {
+      const o = c.createOscillator(), g = c.createGain();
+      o.connect(g); g.connect(mg);
+      o.type = 'triangle'; o.frequency.setValueAtTime(mf, t);
+      g.gain.setValueAtTime(0.001, t);
+      g.gain.linearRampToValueAtTime(0.065, t + 0.015);
+      g.gain.exponentialRampToValueAtTime(0.001, t + stepDur * 0.78);
+      o.start(t); o.stop(t + stepDur);
+    }
+    if (s % 2 === 0) {
+      const bf = BM.bass[s];
+      if (bf) {
+        const o = c.createOscillator(), f = c.createBiquadFilter(), g = c.createGain();
+        o.connect(f); f.connect(g); g.connect(mg);
+        o.type = 'sawtooth'; o.frequency.setValueAtTime(bf, t);
+        f.type = 'lowpass'; f.frequency.setValueAtTime(560, t);
+        g.gain.setValueAtTime(0.001, t);
+        g.gain.linearRampToValueAtTime(0.05, t + 0.015);
+        g.gain.exponentialRampToValueAtTime(0.001, t + stepDur * 1.8);
+        o.start(t); o.stop(t + stepDur * 2.1);
+      }
+    }
+    if (s % 4 === 0) {
+      const o = c.createOscillator(), g = c.createGain();
+      o.connect(g); g.connect(mg);
+      o.type = 'sine';
+      o.frequency.setValueAtTime(120, t);
+      o.frequency.exponentialRampToValueAtTime(28, t + 0.12);
+      g.gain.setValueAtTime(0.18, t);
+      g.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
+      o.start(t); o.stop(t + 0.2);
+    }
+    bossSeq.step++;
+    bossSeq.nextTime += stepDur;
+  }
+  setTimeout(() => scheduleBossSeq(), 120);
+}
 
 // ── factories ─────────────────────────────────────────────────────────────────
 
@@ -477,6 +587,8 @@ function companionTarget(idx) {
 // ── init ──────────────────────────────────────────────────────────────────────
 
 function initGame() {
+  stopBossMusic();
+  greenFlash = 0;
   score = 0; level = 1;
   bossActive = false; boss = null;
   nextBossIdx = 0;
@@ -549,6 +661,58 @@ function drawEnemy(e) {
   ctx.restore();
 }
 
+function drawGreenBeam(e) {
+  const charging = e.beamTimer < 45 && e.beamActive <= 0;
+  const active = e.beamActive > 0;
+  if (!charging && !active) return;
+
+  const tSE = Math.max(0, Math.min(W - e.x, H - e.y));
+  const tNW = Math.max(0, Math.min(e.x, e.y));
+  const tNE = Math.max(0, Math.min(W - e.x, e.y));
+  const tSW = Math.max(0, Math.min(e.x, H - e.y));
+  const arms = [
+    [e.x + tSE, e.y + tSE],
+    [e.x - tNW, e.y - tNW],
+    [e.x + tNE, e.y - tNE],
+    [e.x - tSW, e.y + tSW],
+  ];
+
+  ctx.save();
+  if (active) {
+    const a = Math.min(1, e.beamActive / 5);
+    ctx.globalAlpha = a;
+    ctx.shadowColor = '#4f4'; ctx.shadowBlur = 28;
+    ctx.strokeStyle = '#0f0'; ctx.lineWidth = 5;
+    ctx.beginPath();
+    for (const [ax, ay] of arms) { ctx.moveTo(e.x, e.y); ctx.lineTo(ax, ay); }
+    ctx.stroke();
+    ctx.lineWidth = 1.5; ctx.strokeStyle = '#cfc'; ctx.shadowBlur = 6;
+    ctx.beginPath();
+    for (const [ax, ay] of arms) { ctx.moveTo(e.x, e.y); ctx.lineTo(ax, ay); }
+    ctx.stroke();
+  } else {
+    const charge = (45 - e.beamTimer) / 45;
+    const pulse = 0.5 + 0.5 * Math.sin(time * 0.45);
+    ctx.globalAlpha = Math.min(1, charge * 0.5 + pulse * 0.2);
+    ctx.shadowColor = '#4f4'; ctx.shadowBlur = 8;
+    ctx.strokeStyle = '#4f4'; ctx.lineWidth = 1.5;
+    ctx.setLineDash([8, 8]);
+    ctx.beginPath();
+    for (const [ax, ay] of arms) { ctx.moveTo(e.x, e.y); ctx.lineTo(ax, ay); }
+    ctx.stroke();
+    ctx.setLineDash([]);
+    // Pre-fire white flash on enemy body
+    if (e.beamTimer < 12) {
+      const intensity = (12 - e.beamTimer) / 12;
+      ctx.globalAlpha = intensity * (0.45 + 0.45 * Math.abs(Math.sin(time * 2.2)));
+      ctx.shadowColor = '#fff'; ctx.shadowBlur = 35;
+      ctx.fillStyle = '#fff5';
+      ctx.beginPath(); ctx.arc(e.x, e.y, e.w * 0.85, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+  ctx.restore();
+}
+
 function drawBoss(b) {
   ctx.save();
   ctx.shadowColor = b.glow; ctx.shadowBlur = 30;
@@ -608,9 +772,11 @@ function spawnEnemy() {
   const types = [
     { w: 32, h: 28, hp: 1, speed: 3.0 + level*0.6, color: '#f44', glowColor: '#f00', pts: 10, wave: false, canShoot: false },
     { w: 28, h: 24, hp: 1, speed: 5.0 + level*0.8, color: '#fa0', glowColor: '#f80', pts: 15, wave: true,  canShoot: false },
+    { w: 34, h: 28, hp: 2, speed: 2.2 + level*0.5, color: '#1a5a1a', glowColor: '#4f4', pts: 25, wave: false, canShoot: false, isGreen: true, beamTimer: 70 + Math.random()*50, beamActive: 0, beamChargeSounded: false },
     { w: 40, h: 34, hp: 3, speed: 1.6 + level*0.4, color: '#08f', glowColor: '#06f', pts: 30, wave: false, canShoot: true  },
   ];
-  const t = types[Math.floor(Math.random() * (level < 3 ? 2 : 3))];
+  const available = level < 2 ? 2 : level < 3 ? 3 : 4;
+  const t = types[Math.floor(Math.random() * available)];
   enemies.push({ ...t, x: Math.random()*(W-80)+40, y: -30,
                  waveOffset: Math.random()*Math.PI*2, shootTimer: 60+Math.random()*60, alive: true });
 }
@@ -628,6 +794,8 @@ function spawnBoss(tier) {
     bossTurrets.push({ x: 140, y: 210, w: 40, h: 34, hp: 9, maxHp: 9, shootTimer: 80,  alive: true, pts: 30, color: '#08f', glowColor: '#06f' });
     bossTurrets.push({ x: W-140, y: 210, w: 40, h: 34, hp: 9, maxHp: 9, shootTimer: 115, alive: true, pts: 30, color: '#08f', glowColor: '#06f' });
   }
+  const speedMap = { minispread: 0.85, spread: 1.0, spiral: 1.25, aimed: 1.55 };
+  startBossMusic(speedMap[tier.type] || 1.0);
 }
 
 function bossShoot() {
@@ -678,6 +846,14 @@ function spawnParticles(x, y, color, count = 12) {
 function rect(ax, ay, aw, ah, bx, by, bw, bh) {
   return ax-aw/2 < bx+bw/2 && ax+aw/2 > bx-bw/2 &&
          ay-ah/2 < by+bh/2 && ay+ah/2 > by-bh/2;
+}
+
+function hitByDiagBeam(ex, ey, px, py, halfW) {
+  // distance from (px,py) to diagonal line x-y=ex-ey
+  const d1 = Math.abs((px - py) - (ex - ey)) * 0.7071;
+  // distance from (px,py) to diagonal line x+y=ex+ey
+  const d2 = Math.abs((px + py) - (ex + ey)) * 0.7071;
+  return d1 < halfW || d2 < halfW;
 }
 
 // ── update ────────────────────────────────────────────────────────────────────
@@ -755,6 +931,7 @@ function update(dt) {
   floatingTexts.forEach(ft => { ft.y -= 1.2 * dt; ft.life -= 0.022 * dt; });
   floatingTexts = floatingTexts.filter(ft => ft.life > 0);
   if (screenShake > 0) screenShake = Math.max(0, screenShake - 0.6 * dt);
+  if (greenFlash > 0) greenFlash = Math.max(0, greenFlash - 0.028 * dt);
 
   if (state !== 'playing') return;
 
@@ -793,6 +970,29 @@ function update(dt) {
           bullets.push({ x: e.x, y: e.y, vx: Math.cos(a)*6, vy: Math.sin(a)*6, fromPlayer: false });
         }
         e.shootTimer = 60 + Math.random()*60;
+      }
+    }
+
+    if (e.isGreen) {
+      if (e.beamActive > 0) {
+        e.beamActive -= dt;
+        if (p1.lives > 0 && hitByDiagBeam(e.x, e.y, p1.x, p1.y, 20)) hitPlayer();
+        for (const c of companions) {
+          if (c.alive && hitByDiagBeam(e.x, e.y, c.x, c.y, 14)) hitCompanion(c);
+        }
+      } else {
+        e.beamTimer -= dt;
+        if (!e.beamChargeSounded && e.beamTimer < 45) {
+          sndBeamCharge();
+          e.beamChargeSounded = true;
+        }
+        if (e.beamTimer <= 0) {
+          e.beamActive = 28;
+          e.beamTimer = 85 + Math.random() * 55;
+          e.beamChargeSounded = false;
+          greenFlash = 0.42;
+          sndBeamFire();
+        }
       }
     }
 
@@ -840,6 +1040,7 @@ function update(dt) {
           statsBossesKilled++;
           bossTurrets = [];
           boss.alive = false; bossActive = false; boss = null;
+          stopBossMusic();
           score += pts;
           updateUI();
           showOverlay('powerup');
@@ -942,7 +1143,7 @@ function draw() {
   drawShipObj(p1);
   for (const c of companions) drawShipObj(c);
 
-  for (const e of enemies) drawEnemy(e);
+  for (const e of enemies) { if (e.isGreen) drawGreenBeam(e); drawEnemy(e); }
 
   // Turrets
   for (const t of bossTurrets) {
@@ -1033,6 +1234,12 @@ function draw() {
     }
   }
 
+  // Green beam flash
+  if (greenFlash > 0) {
+    ctx.save(); ctx.fillStyle = '#0f0'; ctx.globalAlpha = greenFlash * 0.17;
+    ctx.fillRect(0, 0, W, H); ctx.restore();
+  }
+
   // Dim overlay when paused or powerup selection
   if (state === 'paused' || state === 'powerup') {
     ctx.save(); ctx.fillStyle = '#000'; ctx.globalAlpha = 0.45;
@@ -1064,6 +1271,11 @@ function showOverlay(type) {
       <h1 style="font-size:28px;letter-spacing:6px">ИЗМЕНЕНИЯ</h1>
       <div class="changelog-wrap">
         <div class="cl-version">v1.1 — 23.05.26</div>
+        <div class="cl-item">Зелёные враги: испускают диагональный луч-крест, наносящий контактный урон (появляются с уровня 2)</div>
+        <div class="cl-item">Звук зарядки луча: нарастающий вой + эскалирующие биппы</div>
+        <div class="cl-item">Звук выстрела луча + зелёная вспышка на весь экран</div>
+        <div class="cl-item">Белая вспышка на зелёном враге за 0.2 сек до выстрела</div>
+        <div class="cl-item">Музыка во время боссфайтов: мелодия, бас, кик; темп ускоряется к Boss III</div>
         <div class="cl-item">Мини-босс (500 очков): атакует вдвое чаще</div>
         <div class="cl-item">Босс III (5000 очков): скорость атаки и пуль снижена в 2 раза</div>
         <div class="cl-item">Врагов на карте в 1.5× больше</div>
@@ -1156,6 +1368,7 @@ function startGame() {
   overlay.style.display = 'none';
   pauseBtn.textContent = '⏸';
   state = 'playing';
+  try { ac(); } catch(e) {}
   initGame();
 }
 
