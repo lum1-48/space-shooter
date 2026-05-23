@@ -179,6 +179,181 @@
     padding-left: 12px;
   }
   .cl-item::before { content: '• '; color: #0cf9; }
+
+  /* ── BACKGROUND GRID ──────────────────────────────────────────────────────── */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,200,255,0.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,200,255,0.025) 1px, transparent 1px);
+    background-size: 60px 60px;
+    pointer-events: none;
+    z-index: 0;
+    animation: gridDrift 20s linear infinite;
+  }
+  @keyframes gridDrift {
+    from { background-position: 0 0; }
+    to   { background-position: 60px 60px; }
+  }
+
+  /* ── SCANLINES ────────────────────────────────────────────────────────────── */
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 3px,
+      rgba(0,0,0,0.18) 3px,
+      rgba(0,0,0,0.18) 4px
+    );
+    pointer-events: none;
+    z-index: 9999;
+    animation: crtFlicker 8s step-end infinite;
+  }
+  @keyframes crtFlicker {
+    0%, 94%, 96%, 98%, 100% { opacity: 1; }
+    95%, 97%, 99%           { opacity: 0.85; }
+  }
+
+  /* ── CANVAS ───────────────────────────────────────────────────────────────── */
+  canvas {
+    animation: canvasGlow 4s ease-in-out infinite;
+    position: relative;
+    z-index: 1;
+  }
+  @keyframes canvasGlow {
+    0%, 100% { box-shadow: 0 0 40px #0af3, 0 0 80px #0af1;  border-color: #1a3a5c; }
+    50%      { box-shadow: 0 0 60px #0af6, 0 0 130px #0af2, 0 0 220px #0af1; border-color: #2a6090; }
+  }
+
+  /* ── HUD ──────────────────────────────────────────────────────────────────── */
+  #ui {
+    position: relative;
+    z-index: 2;
+    padding-bottom: 8px;
+  }
+  #ui::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, #0cf, transparent);
+    animation: scanBar 4s linear infinite;
+  }
+  @keyframes scanBar {
+    0%   { transform: scaleX(0); transform-origin: left; opacity: 1; }
+    49%  { transform: scaleX(1); transform-origin: left; opacity: 1; }
+    50%  { transform: scaleX(1); transform-origin: right; opacity: 1; }
+    100% { transform: scaleX(0); transform-origin: right; opacity: 1; }
+  }
+
+  .heart-p1 {
+    display: inline-block;
+    animation: heartbeat 1.4s ease-in-out infinite;
+  }
+  @keyframes heartbeat {
+    0%, 100% { transform: scale(1);    text-shadow: 0 0 6px #0cf; }
+    14%      { transform: scale(1.35); text-shadow: 0 0 14px #0ff; }
+    28%      { transform: scale(1);    }
+    42%      { transform: scale(1.18); }
+    56%      { transform: scale(1);    }
+  }
+
+  #scoreDisplay {
+    display: inline-block;
+    animation: scorePulse 3s ease-in-out infinite;
+  }
+  @keyframes scorePulse {
+    0%, 100% { color: #fff; text-shadow: none; }
+    50%      { color: #0ff; text-shadow: 0 0 10px #0ff, 0 0 20px #0cf5; }
+  }
+
+  #recordDisplay { animation: recordGlow 2.5s ease-in-out infinite; }
+  @keyframes recordGlow {
+    0%, 100% { text-shadow: 0 0 6px #aa0; }
+    50%      { text-shadow: 0 0 14px #ff0, 0 0 28px #aa06; }
+  }
+
+  /* ── PAUSE BUTTON ─────────────────────────────────────────────────────────── */
+  #pauseBtn { animation: pauseGlow 3s ease-in-out infinite; }
+  @keyframes pauseGlow {
+    0%, 100% { box-shadow: none; }
+    50%      { box-shadow: 0 0 10px #0cf4; }
+  }
+
+  /* ── OVERLAY ──────────────────────────────────────────────────────────────── */
+  #overlay { z-index: 10; }
+
+  #overlay h1 { animation: titleGlitch 5s infinite; }
+  @keyframes titleGlitch {
+    0%, 88%, 100% { text-shadow: 0 0 20px #0cf, 0 0 40px #0af; transform: translate(0); }
+    89%  { text-shadow: -3px 0 #f0f, 3px 0 #0ff; transform: translate(-3px, 0); }
+    90%  { text-shadow: 3px 0 #f0f, -3px 0 #0ff; transform: translate(3px, 0); }
+    91%  { text-shadow: 0 0 20px #0cf, 0 0 40px #0af; transform: translate(0); }
+    92%  { text-shadow: -2px 0 #f0f, 2px 0 #0ff; transform: translate(-2px, 1px); }
+    93%  { text-shadow: 0 0 20px #0cf, 0 0 40px #0af; transform: translate(0); }
+  }
+
+  #overlay button {
+    position: relative;
+    overflow: hidden;
+    transition: all 0.2s, transform 0.15s;
+    animation: btnIdlePulse 2.5s ease-in-out infinite;
+  }
+  @keyframes btnIdlePulse {
+    0%, 100% { box-shadow: 0 0 10px #0cf5; }
+    50%      { box-shadow: 0 0 20px #0cf8, 0 0 40px #0cf2; }
+  }
+  #overlay button.btn-warn { animation: btnWarnPulse 2.5s ease-in-out infinite; }
+  @keyframes btnWarnPulse {
+    0%, 100% { box-shadow: 0 0 10px #fa05; }
+    50%      { box-shadow: 0 0 20px #fa08, 0 0 40px #fa02; }
+  }
+  #overlay button.btn-green { animation: btnGreenPulse 2.5s ease-in-out infinite; }
+  @keyframes btnGreenPulse {
+    0%, 100% { box-shadow: 0 0 10px #4f45; }
+    50%      { box-shadow: 0 0 20px #4f48, 0 0 40px #4f42; }
+  }
+
+  /* Shimmer sweep on buttons */
+  #overlay button::before {
+    content: '';
+    position: absolute;
+    top: -50%; left: -80%;
+    width: 40%; height: 200%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.12), transparent);
+    transform: skewX(-20deg);
+    animation: shimmer 3.5s ease-in-out infinite;
+  }
+  @keyframes shimmer {
+    0%   { left: -80%; }
+    60%, 100% { left: 160%; }
+  }
+
+  #overlay button:hover { transform: scale(1.04) translateY(-1px); }
+  #overlay button:active { transform: scale(0.97); }
+
+  /* ── NEW RECORD ROW ───────────────────────────────────────────────────────── */
+  .records-table tr.new-record td {
+    animation: newRecordPulse 1s ease-in-out infinite;
+  }
+  @keyframes newRecordPulse {
+    0%, 100% { text-shadow: 0 0 8px #ff0; }
+    50%      { text-shadow: 0 0 18px #ff0, 0 0 36px #aa06; }
+  }
+
+  /* ── SCORE DISPLAY (game over) ────────────────────────────────────────────── */
+  #overlay .score-display {
+    animation: scoreFlare 2s ease-in-out infinite;
+  }
+  @keyframes scoreFlare {
+    0%, 100% { text-shadow: 0 0 10px #f44; }
+    50%      { text-shadow: 0 0 24px #f44, 0 0 48px #f442; }
+  }
 </style>
 </head>
 <body>
@@ -462,7 +637,7 @@ function bossShoot() {
   } else if (boss.type === 'spiral') {
     for (let i = 0; i < 5; i++) {
       const a = boss.shootAngle + (i/5)*Math.PI*2;
-      boss.bullets.push({ x: boss.x, y: boss.y, vx: Math.cos(a)*5.6, vy: Math.sin(a)*5.6 });
+      boss.bullets.push({ x: boss.x, y: boss.y, vx: Math.cos(a)*7.0, vy: Math.sin(a)*7.0 });
     }
     boss.shootAngle += 0.3; boss.shootTimer = 28;
   } else if (boss.type === 'aimed') {
@@ -789,41 +964,26 @@ function showOverlay(type) {
     overlay.innerHTML = `
       <h1 style="font-size:28px;letter-spacing:6px">ИЗМЕНЕНИЯ</h1>
       <div class="changelog-wrap">
-        <div class="cl-version">v1.4 — 23.05.26</div>
+        <div class="cl-version">v1.1 — 23.05.26</div>
         <div class="cl-item">Мини-босс (500 очков): атакует вдвое чаще</div>
-        <div class="cl-item">Босс III (5000 очков): скорость атаки снижена в 2 раза</div>
+        <div class="cl-item">Босс III (5000 очков): скорость атаки и пуль снижена в 2 раза</div>
         <div class="cl-item">Врагов на карте в 1.5× больше</div>
-
-        <div class="cl-version">v1.3 — 22.05.26</div>
-        <div class="cl-item">Стабильный FPS на всех устройствах (delta-time)</div>
-        <div class="cl-item">Скорость игры одинакова на 60 и 120 Гц</div>
-        <div class="cl-item">Мини-босс: вдвое реже стреляет, пули медленнее</div>
-
-        <div class="cl-version">v1.2 — 22.05.26</div>
-        <div class="cl-item">Система рекордов — топ-5 сохраняется в браузере</div>
-        <div class="cl-item">Рекорды отображаются в главном меню и после смерти</div>
-        <div class="cl-item">Напарник: 2 HP, быстрая атака, держится ближе</div>
-        <div class="cl-item">Накопление напарников — каждый выбор добавляет нового</div>
-        <div class="cl-item">Построение напарников пирамидой под игроком</div>
-
-        <div class="cl-version">v1.1 — 22.05.26</div>
-        <div class="cl-item">Удалён режим двух игроков</div>
-        <div class="cl-item">Кнопка паузы ⏸ с меню: продолжить / заново / меню</div>
-        <div class="cl-item">Мини-босс на 500 очков</div>
-        <div class="cl-item">Выбор усиления после каждого убитого босса</div>
-        <div class="cl-item">Усиления: тройной выстрел, жизнь, напарник</div>
-        <div class="cl-item">Красная вспышка (3 мигания) при получении урона</div>
-        <div class="cl-item">Уменьшено количество пуль у Босса II (спираль)</div>
-        <div class="cl-item">Скорость игрока снижена на 15%</div>
-        <div class="cl-item">Только синие враги стреляют в игрока</div>
-        <div class="cl-item">Исправлено управление при любой раскладке клавиатуры</div>
+        <div class="cl-item">Анимации интерфейса: глитч, сканлайны, свечение</div>
+        <div class="cl-item">Босс II (2500 очков): скорость пуль увеличена на 25%</div>
 
         <div class="cl-version">v1.0 — 22.05.26</div>
         <div class="cl-item">Базовый геймплей: корабль, враги, боссы</div>
         <div class="cl-item">Три типа врагов: красный, оранжевый (волна), синий</div>
         <div class="cl-item">Четыре босса: мини, Boss I, Boss II, Boss III</div>
+        <div class="cl-item">Мини-босс на 500 очков</div>
+        <div class="cl-item">Выбор усиления после каждого убитого босса</div>
+        <div class="cl-item">Усиления: тройной выстрел, жизнь, напарник</div>
+        <div class="cl-item">Система рекордов — топ-5 сохраняется в браузере</div>
+        <div class="cl-item">Напарники: 2 HP, пирамидальное построение</div>
+        <div class="cl-item">Кнопка паузы ⏸ с меню: продолжить / заново / меню</div>
+        <div class="cl-item">Стабильный FPS на 60 и 120 Гц (delta-time)</div>
         <div class="cl-item">Звёздный фон, частицы, неоновая графика</div>
-        <div class="cl-item">Автоматическая стрельба игрока</div>
+        <div class="cl-item">Только синие враги стреляют в игрока</div>
       </div>
       <button id="btnBack" class="btn-sm btn-warn" style="margin-top:8px">← НАЗАД</button>`;
     document.getElementById('btnBack').addEventListener('click', () => showOverlay('menu'));
