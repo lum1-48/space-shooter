@@ -431,6 +431,9 @@ let keys = {};
 let bossActive = false, boss = null;
 let nextBossIdx = 0;
 let frame = 0, time = 0;
+let floatingTexts = [], bossTurrets = [];
+let statsEnemiesKilled = 0, statsBossesKilled = 0, statsHitsTaken = 0;
+let screenShake = 0;
 let enemySpawnInterval = 60, enemySpawnTimer = 0;
 
 // ── factories ─────────────────────────────────────────────────────────────────
@@ -481,6 +484,8 @@ function initGame() {
   companions = [];
   p1 = makePlayer(W / 2, '#1af', '#0cf');
   bullets = []; enemies = []; particles = [];
+  floatingTexts = []; bossTurrets = [];
+  statsEnemiesKilled = 0; statsBossesKilled = 0; statsHitsTaken = 0;
   updateUI();
 }
 
@@ -618,6 +623,11 @@ function spawnBoss(tier) {
            type: tier.type, pts: tier.pts,
            color: tier.color, glow: tier.glow, label: tier.label };
   enemies = [];
+  bossTurrets = [];
+  if (tier.type === 'spiral') {
+    bossTurrets.push({ x: 140, y: 210, w: 40, h: 34, hp: 3, maxHp: 3, shootTimer: 80,  alive: true, pts: 30, color: '#08f', glowColor: '#06f' });
+    bossTurrets.push({ x: W-140, y: 210, w: 40, h: 34, hp: 3, maxHp: 3, shootTimer: 115, alive: true, pts: 30, color: '#08f', glowColor: '#06f' });
+  }
 }
 
 function bossShoot() {
@@ -721,6 +731,8 @@ function updateCompanions(dt) {
 function hitPlayer() {
   if (!p1 || p1.invincible > 0) return;
   p1.lives--;
+  statsHitsTaken++;
+  screenShake = 10;
   p1.invincible = 120;
   p1.hitFlash = 30;
   spawnParticles(p1.x, p1.y, p1.glowColor, 20);
@@ -740,6 +752,9 @@ function update(dt) {
   frame++;
   time += dt;
   for (const s of stars) { s.y += s.speed * dt; if (s.y > H) { s.y = 0; s.x = Math.random()*W; } }
+  floatingTexts.forEach(ft => { ft.y -= 1.2 * dt; ft.life -= 0.022 * dt; });
+  floatingTexts = floatingTexts.filter(ft => ft.life > 0);
+  if (screenShake > 0) screenShake = Math.max(0, screenShake - 0.6 * dt);
 
   if (state !== 'playing') return;
 
@@ -819,12 +834,30 @@ function update(dt) {
         if (boss.hp <= 0) {
           spawnParticles(boss.x, boss.y, boss.glow, 60);
           const pts = boss.pts;
+          floatingTexts.push({ x: boss.x, y: boss.y - 20, pts, color: boss.glow, life: 1.5 });
+          statsBossesKilled++;
+          bossTurrets = [];
           boss.alive = false; bossActive = false; boss = null;
           score += pts;
           updateUI();
           showOverlay('powerup');
         }
         return false;
+      }
+      for (const t of bossTurrets) {
+        if (t.alive && rect(b.x, b.y, 4, 16, t.x, t.y, t.w, t.h)) {
+          t.hp--;
+          spawnParticles(b.x, b.y, t.glowColor, 4);
+          if (t.hp <= 0) {
+            t.alive = false;
+            spawnParticles(t.x, t.y, t.glowColor, 16);
+            score += t.pts;
+            floatingTexts.push({ x: t.x, y: t.y - 10, pts: t.pts, color: t.glowColor, life: 1 });
+            statsEnemiesKilled++;
+            updateUI();
+          }
+          return false;
+        }
       }
       return true;
     });
@@ -836,6 +869,21 @@ function update(dt) {
         if (c.alive && c.invincible <= 0 && rect(c.x, c.y, c.w-6, c.h-6, boss.x, boss.y, boss.w, boss.h)) hitCompanion(c);
       }
     }
+
+    // Turrets update
+    for (const t of bossTurrets) {
+      if (!t.alive) continue;
+      t.shootTimer -= dt;
+      if (t.shootTimer <= 0 && p1 && p1.lives > 0) {
+        const a = Math.atan2(p1.y - t.y, p1.x - t.x);
+        bullets.push({ x: t.x, y: t.y, vx: Math.cos(a) * 6, vy: Math.sin(a) * 6, fromPlayer: false });
+        t.shootTimer = 60 + Math.random() * 60;
+      }
+      if (p1.lives > 0 && p1.invincible <= 0 && rect(p1.x, p1.y, p1.w-8, p1.h-8, t.x, t.y, t.w, t.h)) hitPlayer();
+      for (const c of companions) {
+        if (c.alive && c.invincible <= 0 && rect(c.x, c.y, c.w-6, c.h-6, t.x, t.y, t.w, t.h)) hitCompanion(c);
+      }
+    }
   }
 
   // Player/companion bullets hit enemies
@@ -845,7 +893,7 @@ function update(dt) {
       if (e.alive && rect(b.x, b.y, 4, 16, e.x, e.y, e.w, e.h)) {
         e.hp--;
         spawnParticles(b.x, b.y, e.glowColor, 6);
-        if (e.hp <= 0) { e.alive = false; spawnParticles(e.x, e.y, e.glowColor, 16); score += e.pts; updateUI(); }
+        if (e.hp <= 0) { e.alive = false; spawnParticles(e.x, e.y, e.glowColor, 16); score += e.pts; floatingTexts.push({ x: e.x, y: e.y - 10, pts: e.pts, color: e.glowColor, life: 1 }); statsEnemiesKilled++; updateUI(); }
         return false;
       }
     }
@@ -869,6 +917,14 @@ function update(dt) {
 // ── draw ──────────────────────────────────────────────────────────────────────
 
 function draw() {
+  if (screenShake > 0) {
+    const dx = (Math.random() - 0.5) * screenShake;
+    const dy = (Math.random() - 0.5) * screenShake;
+    canvas.style.transform = `translate(${dx}px, ${dy}px)`;
+  } else {
+    canvas.style.transform = '';
+  }
+
   ctx.fillStyle = '#020810';
   ctx.fillRect(0, 0, W, H);
 
@@ -884,6 +940,18 @@ function draw() {
   for (const c of companions) drawShipObj(c);
 
   for (const e of enemies) drawEnemy(e);
+
+  // Turrets
+  for (const t of bossTurrets) {
+    if (!t.alive) continue;
+    drawEnemy(t);
+    const tbw = 32, tbx = t.x - tbw / 2, tby = t.y - t.h / 2 - 10;
+    ctx.save();
+    ctx.fillStyle = '#1a2a3a'; ctx.fillRect(tbx, tby, tbw, 4);
+    ctx.shadowColor = t.glowColor; ctx.shadowBlur = 5; ctx.fillStyle = t.glowColor;
+    ctx.fillRect(tbx, tby, tbw * (t.hp / t.maxHp), 4);
+    ctx.restore();
+  }
 
   if (bossActive && boss && boss.alive) {
     drawBoss(boss);
@@ -911,6 +979,34 @@ function draw() {
   for (const p of particles) {
     ctx.save(); ctx.globalAlpha = p.life; ctx.shadowColor = p.color; ctx.shadowBlur = 8; ctx.fillStyle = p.color;
     ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI*2); ctx.fill();
+    ctx.restore();
+  }
+
+  // Floating score texts
+  for (const ft of floatingTexts) {
+    ctx.save();
+    ctx.globalAlpha = Math.min(1, ft.life);
+    ctx.shadowColor = ft.color; ctx.shadowBlur = 8;
+    ctx.fillStyle = ft.color;
+    ctx.font = 'bold 14px Courier New';
+    ctx.textAlign = 'center';
+    ctx.fillText('+' + ft.pts, ft.x, ft.y);
+    ctx.restore();
+  }
+
+  // Progress bar
+  if (!bossActive && nextBossIdx < BOSS_TIERS.length && state === 'playing') {
+    const nb = BOSS_TIERS[nextBossIdx];
+    const prevScore = nextBossIdx > 0 ? BOSS_TIERS[nextBossIdx - 1].scoreThreshold : 0;
+    const progress = Math.min(1, Math.max(0, (score - prevScore) / (nb.scoreThreshold - prevScore)));
+    const pbw = 300, pbh = 5, pbx = (W - pbw) / 2, pby = H - 18;
+    ctx.save();
+    ctx.fillStyle = '#111d2a'; ctx.fillRect(pbx - 1, pby - 1, pbw + 2, pbh + 2);
+    ctx.shadowColor = nb.glow; ctx.shadowBlur = 8; ctx.fillStyle = nb.glow;
+    ctx.fillRect(pbx, pby, pbw * progress, pbh);
+    ctx.shadowBlur = 0; ctx.fillStyle = '#7ab';
+    ctx.font = '10px Courier New'; ctx.textAlign = 'center';
+    ctx.fillText(`▲ ${nb.label}  —  ещё ${Math.max(0, nb.scoreThreshold - score)} очков`, W / 2, pby - 5);
     ctx.restore();
   }
 
@@ -970,6 +1066,11 @@ function showOverlay(type) {
         <div class="cl-item">Врагов на карте в 1.5× больше</div>
         <div class="cl-item">Анимации интерфейса: глитч, сканлайны, свечение</div>
         <div class="cl-item">Босс II (2500 очков): скорость пуль увеличена на 25%</div>
+        <div class="cl-item">Floating numbers: +очки всплывают при убийстве врага</div>
+        <div class="cl-item">Босс II: два синих туррета по бокам (3 HP, стреляют в игрока)</div>
+        <div class="cl-item">Прогресс-бар до следующего босса внизу экрана</div>
+        <div class="cl-item">Статистика в конце игры: врагов, боссов, ранений</div>
+        <div class="cl-item">Screen shake при получении урона</div>
 
         <div class="cl-version">v1.0 — 22.05.26</div>
         <div class="cl-item">Базовый геймплей: корабль, враги, боссы</div>
@@ -995,7 +1096,12 @@ function showOverlay(type) {
       <h1 style="font-size:36px;color:#f55;text-shadow:0 0 20px #f44">GAME OVER</h1>
       ${isNew ? '<p style="color:#ff0;text-shadow:0 0 10px #ff0;letter-spacing:3px;font-size:14px">★ НОВЫЙ РЕКОРД ★</p>' : ''}
       <p class="score-display">СЧЁТ: ${score}</p>
-      <p style="color:#aef;margin-bottom:6px">Уровень: ${level}</p>
+      <p style="color:#aef;margin-bottom:2px">Уровень: ${level}</p>
+      <p style="color:#556;font-size:12px;letter-spacing:1px;margin-bottom:6px">
+        ВРАГОВ: <span style="color:#aef">${statsEnemiesKilled}</span>
+        &nbsp;·&nbsp; БОССОВ: <span style="color:#f84">${statsBossesKilled}</span>
+        &nbsp;·&nbsp; РАНЕНИЙ: <span style="color:#f66">${statsHitsTaken}</span>
+      </p>
       ${recordsHTML(recs, score)}
       <button id="restartBtn" style="margin-top:8px">ЗАНОВО</button>`;
     document.getElementById('restartBtn').addEventListener('click', () => showOverlay('menu'));
