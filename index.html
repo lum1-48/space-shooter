@@ -439,7 +439,8 @@ let greenFlash = 0;
 
 // ── audio ─────────────────────────────────────────────────────────────────────
 
-let audioCtx = null, bossMasterGain = null, bossSeq = null;
+let audioCtx = null, masterGain = null, musicSeq = null;
+let muted = localStorage.getItem('spaceMuted') === 'true';
 
 function ac() {
   if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -448,6 +449,7 @@ function ac() {
 }
 
 function nt(freq, type, vol, dur, delay, freqEnd, dst) {
+  if (muted) return;
   const c = ac(), t0 = c.currentTime + (delay || 0);
   const o = c.createOscillator(), g = c.createGain();
   o.connect(g); g.connect(dst || c.destination);
@@ -459,8 +461,10 @@ function nt(freq, type, vol, dur, delay, freqEnd, dst) {
   o.start(t0); o.stop(t0 + dur + 0.05);
 }
 
+function sndShoot()      { nt(880, 'sine', 0.016, 0.052, 0, 440); }
+
 function sndBeamCharge() {
-  nt(160, 'sawtooth', 0.035, 0.75, 0,    1000);
+  nt(160, 'sawtooth', 0.035, 0.75, 0, 1000);
   [0, 0.13, 0.27, 0.42, 0.58].forEach((d, i) => nt(300 + i*120, 'sine', 0.02, 0.09, d));
 }
 
@@ -470,29 +474,109 @@ function sndBeamFire() {
   nt(160,  'sine',     0.06, 0.18, 0.02);
 }
 
-const BM = {
-  melody: [440, 0, 392, 329.63, 0, 293.66, 329.63, 392,
-           440, 0, 329.63, 0, 261.63, 293.66, 0, 392],
-  bass:   [110, 0, 110, 0, 130.81, 0, 98, 0,
-           110, 0, 110, 0, 87.31,  0, 98, 0],
-};
-
-function startBossMusic(speed) {
-  stopBossMusic();
-  const c = ac();
-  bossMasterGain = c.createGain();
-  bossMasterGain.gain.setValueAtTime(0.001, c.currentTime);
-  bossMasterGain.gain.linearRampToValueAtTime(1, c.currentTime + 0.7);
-  bossMasterGain.connect(c.destination);
-  bossSeq = { active: true, step: 0, nextTime: c.currentTime, stepDur: 0.2 / (speed || 1) };
-  scheduleBossSeq();
+function sndEnemyDie() {
+  nt(160, 'sawtooth', 0.07, 0.13, 0,  20);
+  nt(320, 'square',   0.04, 0.07, 0,  55);
 }
 
-function stopBossMusic() {
-  if (bossSeq) bossSeq.active = false;
-  bossSeq = null;
-  if (bossMasterGain) {
-    const mg = bossMasterGain; bossMasterGain = null;
+function sndGreenDie() {
+  nt(200, 'sawtooth', 0.06, 0.16, 0,  18);
+  nt(550, 'sine',     0.03, 0.11, 0, 100);
+}
+
+function sndPlayerDie() {
+  nt( 220, 'sawtooth', 0.10, 0.18, 0,      30);
+  nt( 180, 'sine',     0.12, 0.55, 0.05,   20);
+  nt( 110, 'sawtooth', 0.08, 0.9,  0.1,    18);
+  nt(1400, 'square',   0.05, 0.08, 0,    200);
+}
+
+function sndBossDie() {
+  nt( 55, 'sine',     0.14, 1.0,  0,      8);
+  nt( 90, 'sawtooth', 0.12, 0.7,  0,     12);
+  nt(200, 'sawtooth', 0.10, 0.4,  0,     35);
+  nt(500, 'square',   0.06, 0.25, 0.03,  80);
+  nt(120, 'sine',     0.10, 0.6,  0.05,  18);
+}
+
+// ── music themes (step-sequencer) ─────────────────────────────────────────────
+//   melody / bass: 16 frequencies (0 = rest)   stepDur: seconds per step
+//   pad: long-decay sine for ambient feel       kick: sine sweep drum every 4 steps
+
+const THEMES = {
+  // Ambient space drift — slow A-minor arpeggios
+  menu: {
+    stepDur: 0.52, melodType: 'sine',     bassType: 'sine',     pad: true,  kick: false,
+    melodVol: 0.032, bassVol: 0.018,
+    melody: [880, 0, 0, 0, 659.26, 0, 0, 0, 523.25, 0, 0, 0, 440, 0, 659.26, 0],
+    bass:   [110, 0, 0, 0, 130.81, 0, 0, 0,      98, 0, 0, 0, 110, 0,      0, 0],
+  },
+  // Mini-boss — fast staccato D-minor glitch
+  minispread: {
+    stepDur: 0.185, melodType: 'triangle', bassType: 'sawtooth', pad: false, kick: true,
+    melodVol: 0.065, bassVol: 0.05,
+    melody: [587.33,      0, 523.25,    440,      0, 349.23,    440, 523.25,
+             587.33, 523.25,    440,      0, 349.23, 293.66,      0, 349.23],
+    bass:   [146.83,      0, 146.83,      0, 174.61,      0, 130.81,      0,
+             146.83,      0, 146.83,      0, 130.81,      0, 164.81,      0],
+  },
+  // Boss I — slow ominous F-minor dread
+  spread: {
+    stepDur: 0.27, melodType: 'triangle', bassType: 'sawtooth', pad: false, kick: true,
+    melodVol: 0.068, bassVol: 0.055,
+    melody: [349.23,      0,      0, 311.13, 261.63,      0, 207.65,      0,
+             261.63,      0, 311.13,      0, 349.23, 311.13,      0, 261.63],
+    bass:   [ 87.31,      0,  87.31,      0, 103.83,      0,  87.31,      0,
+               87.31,      0,  87.31,      0, 116.54,      0, 103.83,      0],
+  },
+  // Boss II — aggressive fast E-minor storm
+  spiral: {
+    stepDur: 0.162, melodType: 'triangle', bassType: 'sawtooth', pad: false, kick: true,
+    melodVol: 0.068, bassVol: 0.052,
+    melody: [659.26, 587.33, 493.88, 659.26,      0, 493.88,    392, 493.88,
+             659.26,      0, 587.33, 493.88,    392, 329.63,      0,    392],
+    bass:   [164.81,      0, 164.81,      0,    196,      0, 123.47,      0,
+             164.81,      0, 164.81,      0, 130.81,      0, 146.83,      0],
+  },
+  // Boss III — blazing D-minor apocalypse, square wave
+  aimed: {
+    stepDur: 0.143, melodType: 'square',   bassType: 'sawtooth', pad: false, kick: true,
+    melodVol: 0.048, bassVol: 0.05,
+    melody: [1174.66,      0,    880, 698.46, 587.33,      0, 698.46,    880,
+             1174.66, 1046.50,      0,    880, 698.46, 587.33,      0,    440],
+    bass:   [ 146.83,      0, 146.83,      0, 174.61,      0, 130.81,      0,
+              146.83,      0, 123.47,      0, 130.81,      0, 164.81,      0],
+  },
+};
+
+function startMusic(key) {
+  const theme = THEMES[key];
+  if (!theme) return;
+  if (musicSeq && musicSeq.active && musicSeq.theme === theme) return;
+  stopMusic();
+  const c = ac();
+  masterGain = c.createGain();
+  masterGain.gain.setValueAtTime(0.001, c.currentTime);
+  masterGain.gain.linearRampToValueAtTime(muted ? 0 : 1, c.currentTime + 0.7);
+  masterGain.connect(c.destination);
+  musicSeq = { active: true, step: 0, nextTime: c.currentTime, theme };
+  scheduleSeq();
+}
+
+function setMute(on) {
+  muted = on;
+  localStorage.setItem('spaceMuted', String(on));
+  if (masterGain) masterGain.gain.setValueAtTime(on ? 0 : 1, ac().currentTime);
+  document.querySelectorAll('.muteBtn').forEach(b => {
+    b.textContent = on ? '🔇 ВЫКЛ' : '🔊 ЗВУК';
+  });
+}
+
+function stopMusic() {
+  if (musicSeq) musicSeq.active = false;
+  musicSeq = null;
+  if (masterGain) {
+    const mg = masterGain; masterGain = null;
     try {
       mg.gain.linearRampToValueAtTime(0.001, ac().currentTime + 0.4);
       setTimeout(() => { try { mg.disconnect(); } catch(e) {} }, 600);
@@ -500,37 +584,39 @@ function stopBossMusic() {
   }
 }
 
-function scheduleBossSeq() {
-  if (!bossSeq || !bossSeq.active) return;
-  const c = ac(), { stepDur } = bossSeq;
-  if (bossSeq.nextTime < c.currentTime - 0.5) bossSeq.nextTime = c.currentTime;
-  while (bossSeq.nextTime < c.currentTime + 0.45) {
-    const s = bossSeq.step % 16, t = bossSeq.nextTime, mg = bossMasterGain;
+function scheduleSeq() {
+  if (!musicSeq || !musicSeq.active) return;
+  const c = ac(), { theme } = musicSeq;
+  const { stepDur, melody, bass, melodType, bassType, melodVol, bassVol, kick, pad } = theme;
+  if (musicSeq.nextTime < c.currentTime - 0.5 || musicSeq.nextTime > c.currentTime + 1.5)
+    musicSeq.nextTime = c.currentTime;
+  while (musicSeq.nextTime < c.currentTime + 0.45) {
+    const s = musicSeq.step % 16, t = musicSeq.nextTime, mg = masterGain;
     if (!mg) break;
-    const mf = BM.melody[s];
+    const mf = melody[s];
     if (mf) {
       const o = c.createOscillator(), g = c.createGain();
       o.connect(g); g.connect(mg);
-      o.type = 'triangle'; o.frequency.setValueAtTime(mf, t);
+      o.type = melodType; o.frequency.setValueAtTime(mf, t);
       g.gain.setValueAtTime(0.001, t);
-      g.gain.linearRampToValueAtTime(0.065, t + 0.015);
-      g.gain.exponentialRampToValueAtTime(0.001, t + stepDur * 0.78);
-      o.start(t); o.stop(t + stepDur);
+      g.gain.linearRampToValueAtTime(melodVol, t + 0.015);
+      g.gain.exponentialRampToValueAtTime(0.001, t + (pad ? stepDur * 2.2 : stepDur * 0.78));
+      o.start(t); o.stop(t + (pad ? stepDur * 2.8 : stepDur));
     }
     if (s % 2 === 0) {
-      const bf = BM.bass[s];
+      const bf = bass[s];
       if (bf) {
         const o = c.createOscillator(), f = c.createBiquadFilter(), g = c.createGain();
         o.connect(f); f.connect(g); g.connect(mg);
-        o.type = 'sawtooth'; o.frequency.setValueAtTime(bf, t);
+        o.type = bassType; o.frequency.setValueAtTime(bf, t);
         f.type = 'lowpass'; f.frequency.setValueAtTime(560, t);
         g.gain.setValueAtTime(0.001, t);
-        g.gain.linearRampToValueAtTime(0.05, t + 0.015);
-        g.gain.exponentialRampToValueAtTime(0.001, t + stepDur * 1.8);
-        o.start(t); o.stop(t + stepDur * 2.1);
+        g.gain.linearRampToValueAtTime(bassVol, t + 0.015);
+        g.gain.exponentialRampToValueAtTime(0.001, t + stepDur * (pad ? 3 : 1.8));
+        o.start(t); o.stop(t + stepDur * (pad ? 3.5 : 2.1));
       }
     }
-    if (s % 4 === 0) {
+    if (kick && s % 4 === 0) {
       const o = c.createOscillator(), g = c.createGain();
       o.connect(g); g.connect(mg);
       o.type = 'sine';
@@ -540,10 +626,10 @@ function scheduleBossSeq() {
       g.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
       o.start(t); o.stop(t + 0.2);
     }
-    bossSeq.step++;
-    bossSeq.nextTime += stepDur;
+    musicSeq.step++;
+    musicSeq.nextTime += stepDur;
   }
-  setTimeout(() => scheduleBossSeq(), 120);
+  setTimeout(() => scheduleSeq(), 120);
 }
 
 // ── factories ─────────────────────────────────────────────────────────────────
@@ -587,7 +673,7 @@ function companionTarget(idx) {
 // ── init ──────────────────────────────────────────────────────────────────────
 
 function initGame() {
-  stopBossMusic();
+  stopMusic();
   greenFlash = 0;
   score = 0; level = 1;
   bossActive = false; boss = null;
@@ -783,19 +869,19 @@ function spawnEnemy() {
 
 function spawnBoss(tier) {
   bossActive = true;
-  boss = { x: W/2, y: 120, w: tier.bw||120, h: tier.bh||80,
+  boss = { x: W/2, y: -160, w: tier.bw||120, h: tier.bh||80,
            hp: tier.hp, maxHp: tier.hp, dx: tier.dx,
            shootTimer: 45, shootAngle: 0, bullets: [], alive: true,
            type: tier.type, pts: tier.pts,
-           color: tier.color, glow: tier.glow, label: tier.label };
+           color: tier.color, glow: tier.glow, label: tier.label,
+           intro: true, introPhase: 1, introTimer: 0, startY: -160, introMidY: Math.round(H * 0.44) };
   enemies = [];
   bossTurrets = [];
   if (tier.type === 'spiral') {
     bossTurrets.push({ x: 140, y: 210, w: 40, h: 34, hp: 9, maxHp: 9, shootTimer: 80,  alive: true, pts: 30, color: '#08f', glowColor: '#06f' });
     bossTurrets.push({ x: W-140, y: 210, w: 40, h: 34, hp: 9, maxHp: 9, shootTimer: 115, alive: true, pts: 30, color: '#08f', glowColor: '#06f' });
   }
-  const speedMap = { minispread: 0.85, spread: 1.0, spiral: 1.25, aimed: 1.55 };
-  startBossMusic(speedMap[tier.type] || 1.0);
+  startMusic(tier.type);
 }
 
 function bossShoot() {
@@ -875,6 +961,7 @@ function updatePlayer(dt) {
       bullets.push({ x: p1.x-14, y: p1.y, vy: -26, fromPlayer: true, color: p1.glowColor });
       bullets.push({ x: p1.x+14, y: p1.y, vy: -26, fromPlayer: true, color: p1.glowColor });
     }
+    sndShoot();
     p1.shootCooldown = level >= 5 ? 10 : 15;
   }
   if (p1.invincible > 0) p1.invincible -= dt;
@@ -913,7 +1000,7 @@ function hitPlayer() {
   p1.hitFlash = 30;
   spawnParticles(p1.x, p1.y, p1.glowColor, 20);
   updateUI();
-  if (p1.lives <= 0) { state = 'dead'; showOverlay('dead'); }
+  if (p1.lives <= 0) { state = 'dead'; stopMusic(); sndPlayerDie(); showOverlay('dead'); }
 }
 
 function hitCompanion(c) {
@@ -1011,10 +1098,25 @@ function update(dt) {
 
   // Boss update
   if (bossActive && boss && boss.alive) {
-    boss.x += boss.dx * dt;
-    if (boss.x > W-boss.w/2-20 || boss.x < boss.w/2+20) boss.dx *= -1;
-    boss.shootTimer -= dt;
-    if (boss.shootTimer <= 0) bossShoot();
+    if (boss.intro) {
+      boss.introTimer += dt;
+      if (boss.introPhase === 1) {
+        const tt = Math.min(1, boss.introTimer / 65);
+        const ease = tt < 0.5 ? 4*tt*tt*tt : 1 - Math.pow(-2*tt+2, 3)/2;
+        boss.y = boss.startY + (boss.introMidY - boss.startY) * ease;
+        if (tt >= 1) { boss.introPhase = 2; boss.introTimer = 0; }
+      } else {
+        const tt = Math.min(1, boss.introTimer / 50);
+        boss.y = boss.introMidY + (120 - boss.introMidY) * (1 - (1-tt)*(1-tt));
+        if (tt >= 1) { boss.intro = false; boss.y = 120; screenShake = 8; }
+      }
+    } else {
+      boss.x += boss.dx * dt;
+      if (boss.x > W-boss.w/2-20) { boss.x = W-boss.w/2-20; boss.dx = -Math.abs(boss.dx); }
+      else if (boss.x < boss.w/2+20) { boss.x = boss.w/2+20; boss.dx = Math.abs(boss.dx); }
+      boss.shootTimer -= dt;
+      if (boss.shootTimer <= 0) bossShoot();
+    }
 
     // Boss bullets hit player/companion
     boss.bullets = boss.bullets.filter(b => {
@@ -1030,7 +1132,7 @@ function update(dt) {
     bullets = bullets.filter(b => {
       if (!b.fromPlayer) return true;
       const scy = (b.y + b._py) / 2, sch = Math.abs(b.y - b._py) + 16;
-      if (boss && boss.alive && rect(b.x, scy, 4, sch, boss.x, boss.y, boss.w, boss.h)) {
+      if (boss && boss.alive && !boss.intro && rect(b.x, scy, 4, sch, boss.x, boss.y, boss.w, boss.h)) {
         boss.hp--;
         spawnParticles(b.x, b.y, boss.glow, 4);
         if (boss.hp <= 0) {
@@ -1040,7 +1142,8 @@ function update(dt) {
           statsBossesKilled++;
           bossTurrets = [];
           boss.alive = false; bossActive = false; boss = null;
-          stopBossMusic();
+          sndBossDie();
+          stopMusic();
           score += pts;
           updateUI();
           showOverlay('powerup');
@@ -1057,6 +1160,7 @@ function update(dt) {
             score += t.pts;
             floatingTexts.push({ x: t.x, y: t.y - 10, pts: t.pts, color: t.glowColor, life: 1 });
             statsEnemiesKilled++;
+            sndEnemyDie();
             updateUI();
           }
           return false;
@@ -1066,7 +1170,7 @@ function update(dt) {
     });
 
     // Boss body collision
-    if (bossActive && boss && boss.alive) {
+    if (bossActive && boss && boss.alive && !boss.intro) {
       if (p1.lives > 0 && p1.invincible <= 0 && rect(p1.x, p1.y, p1.w-8, p1.h-8, boss.x, boss.y, boss.w, boss.h)) hitPlayer();
       for (const c of companions) {
         if (c.alive && c.invincible <= 0 && rect(c.x, c.y, c.w-6, c.h-6, boss.x, boss.y, boss.w, boss.h)) hitCompanion(c);
@@ -1097,7 +1201,7 @@ function update(dt) {
       if (e.alive && rect(b.x, scy, 4, sch, e.x, e.y, e.w, e.h)) {
         e.hp--;
         spawnParticles(b.x, b.y, e.glowColor, 6);
-        if (e.hp <= 0) { e.alive = false; spawnParticles(e.x, e.y, e.glowColor, 16); score += e.pts; floatingTexts.push({ x: e.x, y: e.y - 10, pts: e.pts, color: e.glowColor, life: 1 }); statsEnemiesKilled++; updateUI(); }
+        if (e.hp <= 0) { e.alive = false; spawnParticles(e.x, e.y, e.glowColor, 16); score += e.pts; floatingTexts.push({ x: e.x, y: e.y - 10, pts: e.pts, color: e.glowColor, life: 1 }); statsEnemiesKilled++; if (e.isGreen) sndGreenDie(); else sndEnemyDie(); updateUI(); }
         return false;
       }
     }
@@ -1255,15 +1359,18 @@ function showOverlay(type) {
 
   if (type === 'menu') {
     state = 'menu';
+    startMusic('menu');
     const topRecs = loadRecords().slice(0, 3);
     overlay.innerHTML = `
       <h1>SPACE<br>SHOOTER</h1>
       <p style="color:#aef;font-size:16px;letter-spacing:2px">WASD — движение</p>
       ${topRecs.length ? recordsHTML(topRecs, -1) : ''}
       <button id="btn1p">НАЧАТЬ</button>
-      <button id="btnChangelog" class="btn-sm" style="margin-top:-4px;opacity:0.7">📋 ИЗМЕНЕНИЯ</button>`;
+      <button id="btnChangelog" class="btn-sm" style="margin-top:-4px;opacity:0.7">📋 ИЗМЕНЕНИЯ</button>
+      <button class="btn-sm muteBtn" style="margin-top:2px;opacity:0.75">${muted ? '🔇 ВЫКЛ' : '🔊 ЗВУК'}</button>`;
     document.getElementById('btn1p').addEventListener('click', startGame);
     document.getElementById('btnChangelog').addEventListener('click', () => showOverlay('changelog'));
+    document.querySelector('.muteBtn').addEventListener('click', () => setMute(!muted));
 
   } else if (type === 'changelog') {
     state = 'menu';
@@ -1275,7 +1382,16 @@ function showOverlay(type) {
         <div class="cl-item">Звук зарядки луча: нарастающий вой + эскалирующие биппы</div>
         <div class="cl-item">Звук выстрела луча + зелёная вспышка на весь экран</div>
         <div class="cl-item">Белая вспышка на зелёном враге за 0.2 сек до выстрела</div>
-        <div class="cl-item">Музыка во время боссфайтов: мелодия, бас, кик; темп ускоряется к Boss III</div>
+        <div class="cl-item">Звук проигрыша: спад с высокого треска до низкого гула</div>
+        <div class="cl-item">Музыка останавливается сразу при смерти игрока; возобновляется только при возврате в меню</div>
+        <div class="cl-item">Кнопка 🔊/🔇 в меню и паузе — отключение всех звуков и музыки; состояние сохраняется между сессиями</div>
+        <div class="cl-item">Анимация появления босса: влетает сверху, доходит до середины экрана и возвращается на позицию боя; во время анимации неуязвим</div>
+        <div class="cl-item">Исправлено: Boss I больше не прилипает к стене (позиция теперь зажимается при отражении)</div>
+        <div class="cl-item">Звук смерти врагов: короткий взрыв; зелёные враги — отдельный «электрический» звук</div>
+        <div class="cl-item">Звук смерти босса: многослойный глубокий взрыв (сабвуфер + треск + резонанс)</div>
+        <div class="cl-item">Уникальная тема для каждого босса: мини (D-minor), Boss I (F-minor), Boss II (E-minor), Boss III (D-minor, square wave, ×1.4 быстрее)</div>
+        <div class="cl-item">Музыка меню: медленный ambient A-minor, sine-волны с долгим затуханием</div>
+        <div class="cl-item">Звук выстрела игрока (пиу): каждый залп сопровождается коротким синус-свипом</div>
         <div class="cl-item">Мини-босс (500 очков): атакует вдвое чаще</div>
         <div class="cl-item">Босс III (5000 очков): скорость атаки и пуль снижена в 2 раза</div>
         <div class="cl-item">Врагов на карте в 1.5× больше</div>
@@ -1333,10 +1449,12 @@ function showOverlay(type) {
         <button id="resumeBtn" class="btn-sm">▶ ПРОДОЛЖИТЬ</button>
         <button id="restartBtn" class="btn-sm">↺ ЗАНОВО</button>
         <button id="menuBtn" class="btn-sm btn-warn">⌂ ГЛАВНОЕ МЕНЮ</button>
+        <button class="btn-sm muteBtn">${muted ? '🔇 ВЫКЛ' : '🔊 ЗВУК'}</button>
       </div>`;
     document.getElementById('resumeBtn').addEventListener('click', resumeGame);
     document.getElementById('restartBtn').addEventListener('click', () => { overlay.style.display='none'; pauseBtn.textContent='⏸'; state='playing'; initGame(); });
     document.getElementById('menuBtn').addEventListener('click', () => { pauseBtn.textContent='⏸'; showOverlay('menu'); });
+    document.querySelector('.muteBtn').addEventListener('click', () => setMute(!muted));
 
   } else if (type === 'powerup') {
     state = 'powerup';
