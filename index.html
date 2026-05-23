@@ -302,7 +302,7 @@ function initGame() {
   score = 0; level = 1;
   bossActive = false; boss = null;
   nextBossIdx = 0;
-  enemySpawnInterval = 60; enemySpawnTimer = 0;
+  enemySpawnInterval = 40; enemySpawnTimer = 0;
   companions = [];
   p1 = makePlayer(W / 2, '#1af', '#0cf');
   bullets = []; enemies = []; particles = [];
@@ -452,7 +452,7 @@ function bossShoot() {
       const a = Math.PI/2 + i*0.26;
       boss.bullets.push({ x: boss.x, y: boss.y+boss.h/2, vx: Math.cos(a)*5.0, vy: Math.sin(a)*5.0 });
     }
-    boss.shootTimer = 180;
+    boss.shootTimer = 90;
   } else if (boss.type === 'spread') {
     for (let i = -3; i <= 3; i++) {
       const a = Math.PI/2 + i*0.22;
@@ -469,13 +469,13 @@ function bossShoot() {
     if (p1 && p1.lives > 0) {
       const a = Math.atan2(p1.y - boss.y, p1.x - boss.x);
       for (let i = -2; i <= 2; i++)
-        boss.bullets.push({ x: boss.x, y: boss.y, vx: Math.cos(a+i*0.18)*10, vy: Math.sin(a+i*0.18)*10 });
+        boss.bullets.push({ x: boss.x, y: boss.y, vx: Math.cos(a+i*0.18)*7.5, vy: Math.sin(a+i*0.18)*7.5 });
     }
     for (let i = 0; i < 10; i++) {
       const a = boss.shootAngle + (i/10)*Math.PI*2;
-      boss.bullets.push({ x: boss.x, y: boss.y, vx: Math.cos(a)*4.4, vy: Math.sin(a)*4.4 });
+      boss.bullets.push({ x: boss.x, y: boss.y, vx: Math.cos(a)*3.3, vy: Math.sin(a)*3.3 });
     }
-    boss.shootAngle += 0.45; boss.shootTimer = 18;
+    boss.shootAngle += 0.45; boss.shootTimer = 36;
   }
 }
 
@@ -789,6 +789,11 @@ function showOverlay(type) {
     overlay.innerHTML = `
       <h1 style="font-size:28px;letter-spacing:6px">ИЗМЕНЕНИЯ</h1>
       <div class="changelog-wrap">
+        <div class="cl-version">v1.4 — 23.05.26</div>
+        <div class="cl-item">Мини-босс (500 очков): атакует вдвое чаще</div>
+        <div class="cl-item">Босс III (5000 очков): скорость атаки снижена в 2 раза</div>
+        <div class="cl-item">Врагов на карте в 1.5× больше</div>
+
         <div class="cl-version">v1.3 — 22.05.26</div>
         <div class="cl-item">Стабильный FPS на всех устройствах (delta-time)</div>
         <div class="cl-item">Скорость игры одинакова на 60 и 120 Гц</div>
@@ -869,7 +874,7 @@ function applyPowerup(type) {
   if (type === 'life')      { p1.lives = Math.min(p1.lives + 1, 5); }
   if (type === 'companion') { addCompanion(); }
   level++;
-  enemySpawnInterval = Math.max(25, 70 - level * 7);
+  enemySpawnInterval = Math.max(17, Math.round((70 - level * 7) / 1.5));
   updateUI();
   overlay.style.display = 'none';
   state = 'playing';
