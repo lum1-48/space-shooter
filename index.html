@@ -708,20 +708,52 @@ function updateUI() {
 function drawShip(x, y, w, h, color, glowColor, alpha = 1) {
   ctx.save();
   ctx.globalAlpha = alpha;
-  ctx.shadowColor = glowColor; ctx.shadowBlur = 16;
+  ctx.shadowColor = glowColor; ctx.shadowBlur = 18;
   ctx.fillStyle = color;
+  // Left wing
   ctx.beginPath();
-  ctx.moveTo(x, y - h / 2);
-  ctx.lineTo(x - w / 2, y + h / 2);
-  ctx.lineTo(x - w / 4, y + h / 4);
-  ctx.lineTo(x, y + h / 3);
-  ctx.lineTo(x + w / 4, y + h / 4);
-  ctx.lineTo(x + w / 2, y + h / 2);
+  ctx.moveTo(x, y - h*.5);
+  ctx.lineTo(x - w*.55, y + h*.45);
+  ctx.lineTo(x - w*.65, y + h*.5);
+  ctx.lineTo(x - w*.38, y + h*.28);
+  ctx.lineTo(x - w*.2,  y + h*.1);
   ctx.closePath(); ctx.fill();
-  ctx.fillStyle = glowColor; ctx.shadowBlur = 8;
+  // Right wing
   ctx.beginPath();
-  ctx.ellipse(x, y - h / 6, w / 6, h / 5, 0, 0, Math.PI * 2);
-  ctx.fill();
+  ctx.moveTo(x, y - h*.5);
+  ctx.lineTo(x + w*.55, y + h*.45);
+  ctx.lineTo(x + w*.65, y + h*.5);
+  ctx.lineTo(x + w*.38, y + h*.28);
+  ctx.lineTo(x + w*.2,  y + h*.1);
+  ctx.closePath(); ctx.fill();
+  // Fuselage
+  ctx.beginPath();
+  ctx.moveTo(x, y - h*.5);
+  ctx.lineTo(x - w*.16, y + h*.05);
+  ctx.lineTo(x - w*.18, y + h*.48);
+  ctx.lineTo(x,         y + h*.36);
+  ctx.lineTo(x + w*.18, y + h*.48);
+  ctx.lineTo(x + w*.16, y + h*.05);
+  ctx.closePath(); ctx.fill();
+  // Wing stripes
+  ctx.fillStyle = glowColor + '55'; ctx.shadowBlur = 0;
+  ctx.beginPath();
+  ctx.moveTo(x - w*.08, y - h*.28); ctx.lineTo(x - w*.48, y + h*.42);
+  ctx.lineTo(x - w*.34, y + h*.42); ctx.lineTo(x - w*.04, y - h*.2);
+  ctx.closePath(); ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(x + w*.08, y - h*.28); ctx.lineTo(x + w*.48, y + h*.42);
+  ctx.lineTo(x + w*.34, y + h*.42); ctx.lineTo(x + w*.04, y - h*.2);
+  ctx.closePath(); ctx.fill();
+  // Engine pods
+  ctx.fillStyle = color; ctx.shadowColor = glowColor; ctx.shadowBlur = 12;
+  ctx.beginPath(); ctx.ellipse(x - w*.52, y + h*.42, w*.11, h*.07,  0.3, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(x + w*.52, y + h*.42, w*.11, h*.07, -0.3, 0, Math.PI*2); ctx.fill();
+  // Cockpit
+  ctx.fillStyle = glowColor; ctx.shadowBlur = 10;
+  ctx.beginPath(); ctx.ellipse(x, y - h*.12, w*.13, h*.21, 0, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = '#fff'; ctx.globalAlpha = alpha * .5; ctx.shadowBlur = 0;
+  ctx.beginPath(); ctx.ellipse(x - w*.04, y - h*.19, w*.05, h*.07, -0.3, 0, Math.PI*2); ctx.fill();
   ctx.restore();
 }
 
@@ -738,18 +770,123 @@ function drawThruster(x, y, h, glowColor) {
   ctx.restore();
 }
 
+function _drawEnemyFighter(e) {
+  const {x, y, w, h, color, glowColor} = e;
+  ctx.shadowColor = glowColor; ctx.shadowBlur = 14;
+  ctx.fillStyle = color;
+  // Narrow fuselage pointing down
+  ctx.beginPath();
+  ctx.moveTo(x, y + h*.5); ctx.lineTo(x - w*.15, y); ctx.lineTo(x - w*.12, y - h*.5);
+  ctx.lineTo(x + w*.12, y - h*.5); ctx.lineTo(x + w*.15, y);
+  ctx.closePath(); ctx.fill();
+  // Forward-swept left wing
+  ctx.beginPath();
+  ctx.moveTo(x - w*.15, y); ctx.lineTo(x - w*.5, y + h*.42); ctx.lineTo(x - w*.48, y + h*.5);
+  ctx.lineTo(x - w*.08, y + h*.28); ctx.closePath(); ctx.fill();
+  // Forward-swept right wing
+  ctx.beginPath();
+  ctx.moveTo(x + w*.15, y); ctx.lineTo(x + w*.5, y + h*.42); ctx.lineTo(x + w*.48, y + h*.5);
+  ctx.lineTo(x + w*.08, y + h*.28); ctx.closePath(); ctx.fill();
+  // Cockpit
+  ctx.fillStyle = glowColor; ctx.shadowBlur = 8;
+  ctx.beginPath(); ctx.ellipse(x, y - h*.25, w*.09, h*.13, 0, 0, Math.PI*2); ctx.fill();
+}
+
+function _drawEnemyInterceptor(e) {
+  const {x, y, w, h, color, glowColor} = e;
+  ctx.shadowColor = glowColor; ctx.shadowBlur = 12;
+  ctx.fillStyle = color;
+  // Elongated slim body
+  ctx.beginPath();
+  ctx.moveTo(x, y + h*.5); ctx.lineTo(x - w*.1, y + h*.1); ctx.lineTo(x - w*.12, y - h*.5);
+  ctx.lineTo(x + w*.12, y - h*.5); ctx.lineTo(x + w*.1, y + h*.1);
+  ctx.closePath(); ctx.fill();
+  // Left swept wing
+  ctx.beginPath();
+  ctx.moveTo(x - w*.12, y - h*.1); ctx.lineTo(x - w*.5, y + h*.5); ctx.lineTo(x - w*.1, y + h*.3);
+  ctx.closePath(); ctx.fill();
+  // Right swept wing
+  ctx.beginPath();
+  ctx.moveTo(x + w*.12, y - h*.1); ctx.lineTo(x + w*.5, y + h*.5); ctx.lineTo(x + w*.1, y + h*.3);
+  ctx.closePath(); ctx.fill();
+  // Nose glow
+  ctx.fillStyle = glowColor; ctx.shadowBlur = 8;
+  ctx.beginPath(); ctx.arc(x, y - h*.44, w*.09, 0, Math.PI*2); ctx.fill();
+  // Speed stripe
+  ctx.fillStyle = glowColor + '55'; ctx.shadowBlur = 0;
+  ctx.beginPath(); ctx.rect(x - w*.04, y - h*.3, w*.08, h*.7); ctx.fill();
+}
+
+function _drawEnemyEmitter(e) {
+  const {x, y, w, h, color, glowColor} = e;
+  ctx.shadowColor = glowColor; ctx.shadowBlur = 16;
+  ctx.fillStyle = color;
+  // Wide carapace (beetle)
+  ctx.beginPath(); ctx.ellipse(x, y - h*.05, w*.46, h*.44, 0, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = '#0d3a0d';
+  ctx.beginPath(); ctx.ellipse(x, y + h*.02, w*.34, h*.3, 0, 0, Math.PI*2); ctx.fill();
+  // Left arm
+  ctx.fillStyle = color; ctx.shadowBlur = 10;
+  ctx.beginPath();
+  ctx.moveTo(x - w*.4, y - h*.1); ctx.lineTo(x - w*.5, y - h*.22);
+  ctx.lineTo(x - w*.54, y + h*.1); ctx.lineTo(x - w*.44, y + h*.12);
+  ctx.closePath(); ctx.fill();
+  // Right arm
+  ctx.beginPath();
+  ctx.moveTo(x + w*.4, y - h*.1); ctx.lineTo(x + w*.5, y - h*.22);
+  ctx.lineTo(x + w*.54, y + h*.1); ctx.lineTo(x + w*.44, y + h*.12);
+  ctx.closePath(); ctx.fill();
+  // Emitter nodes
+  ctx.fillStyle = glowColor; ctx.shadowBlur = 14;
+  ctx.beginPath(); ctx.ellipse(x - w*.5, y - h*.05, w*.09, h*.1, 0, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(x + w*.5, y - h*.05, w*.09, h*.1, 0, 0, Math.PI*2); ctx.fill();
+  // Core eye
+  ctx.shadowBlur = 18;
+  ctx.beginPath(); ctx.ellipse(x, y - h*.12, w*.14, h*.16, 0, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = '#dfd'; ctx.shadowBlur = 0;
+  ctx.beginPath(); ctx.ellipse(x - w*.03, y - h*.14, w*.04, h*.05, 0, 0, Math.PI*2); ctx.fill();
+}
+
+function _drawEnemyGunship(e) {
+  const {x, y, w, h, color, glowColor} = e;
+  ctx.shadowColor = glowColor; ctx.shadowBlur = 14;
+  ctx.fillStyle = color;
+  // Armored hull (octagon)
+  ctx.beginPath();
+  ctx.moveTo(x - w*.28, y - h*.5); ctx.lineTo(x + w*.28, y - h*.5);
+  ctx.lineTo(x + w*.5,  y - h*.1); ctx.lineTo(x + w*.5,  y + h*.3);
+  ctx.lineTo(x + w*.28, y + h*.5); ctx.lineTo(x - w*.28, y + h*.5);
+  ctx.lineTo(x - w*.5,  y + h*.3); ctx.lineTo(x - w*.5,  y - h*.1);
+  ctx.closePath(); ctx.fill();
+  // Inner armor plate
+  ctx.fillStyle = '#003888';
+  ctx.beginPath();
+  ctx.moveTo(x - w*.2, y - h*.42); ctx.lineTo(x + w*.2, y - h*.42);
+  ctx.lineTo(x + w*.4, y - h*.08); ctx.lineTo(x + w*.4, y + h*.22);
+  ctx.lineTo(x + w*.2, y + h*.42); ctx.lineTo(x - w*.2, y + h*.42);
+  ctx.lineTo(x - w*.4, y + h*.22); ctx.lineTo(x - w*.4, y - h*.08);
+  ctx.closePath(); ctx.fill();
+  // Side guns
+  ctx.fillStyle = glowColor; ctx.shadowBlur = 10;
+  ctx.beginPath(); ctx.rect(x - w*.65, y - h*.1, w*.17, h*.2); ctx.fill();
+  ctx.beginPath(); ctx.rect(x + w*.48, y - h*.1, w*.17, h*.2); ctx.fill();
+  // Muzzle glow
+  ctx.shadowBlur = 14;
+  ctx.beginPath(); ctx.arc(x - w*.57, y + h*.1, w*.08, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(x + w*.57, y + h*.1, w*.08, 0, Math.PI*2); ctx.fill();
+  // Bridge window
+  ctx.fillStyle = '#88ccff'; ctx.shadowBlur = 8;
+  ctx.beginPath(); ctx.ellipse(x, y - h*.22, w*.2, h*.1, 0, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = '#cce8ff'; ctx.shadowBlur = 0;
+  ctx.beginPath(); ctx.ellipse(x - w*.05, y - h*.24, w*.07, h*.04, 0, 0, Math.PI*2); ctx.fill();
+}
+
 function drawEnemy(e) {
   ctx.save();
-  ctx.shadowColor = e.glowColor; ctx.shadowBlur = 14;
-  ctx.fillStyle = e.color;
-  ctx.beginPath();
-  ctx.moveTo(e.x, e.y + e.h / 2);
-  ctx.lineTo(e.x - e.w / 2, e.y - e.h / 2);
-  ctx.lineTo(e.x - e.w / 4, e.y - e.h / 5);
-  ctx.lineTo(e.x, e.y);
-  ctx.lineTo(e.x + e.w / 4, e.y - e.h / 5);
-  ctx.lineTo(e.x + e.w / 2, e.y - e.h / 2);
-  ctx.closePath(); ctx.fill();
+  if      (e.etype === 0) _drawEnemyFighter(e);
+  else if (e.etype === 1) _drawEnemyInterceptor(e);
+  else if (e.etype === 2) _drawEnemyEmitter(e);
+  else if (e.etype === 3) _drawEnemyGunship(e);
   ctx.restore();
 }
 
@@ -805,34 +942,192 @@ function drawGreenBeam(e) {
   ctx.restore();
 }
 
+function _drawBossCrab(b) {
+  const {x, y, w, h, color, glow} = b;
+  // Legs
+  ctx.save(); ctx.strokeStyle = color; ctx.lineWidth = 2.5; ctx.shadowBlur = 8;
+  [[-h*.5,-h*.08],[-h*.12,h*.14],[h*.06,h*.5]].forEach(([ly,lby]) => {
+    ctx.beginPath(); ctx.moveTo(x-w*.38,y+ly); ctx.lineTo(x-w*1.0,y+lby); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x+w*.38,y+ly); ctx.lineTo(x+w*1.0,y+lby); ctx.stroke();
+  }); ctx.restore();
+  ctx.shadowColor = glow; ctx.shadowBlur = 22; ctx.fillStyle = color;
+  // Left claw
+  ctx.beginPath();
+  ctx.moveTo(x-w*.5,y-h*.28); ctx.lineTo(x-w*1.05,y-h*.48); ctx.lineTo(x-w*1.18,y-h*.12);
+  ctx.lineTo(x-w*1.05,y+h*.06); ctx.lineTo(x-w*.5,y+h*.14); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = glow+'aa';
+  ctx.beginPath(); ctx.moveTo(x-w*1.05,y-h*.48); ctx.lineTo(x-w*1.18,y-h*.28); ctx.lineTo(x-w*1.02,y-h*.2); ctx.closePath(); ctx.fill();
+  // Right claw
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.moveTo(x+w*.5,y-h*.28); ctx.lineTo(x+w*1.05,y-h*.48); ctx.lineTo(x+w*1.18,y-h*.12);
+  ctx.lineTo(x+w*1.05,y+h*.06); ctx.lineTo(x+w*.5,y+h*.14); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = glow+'aa';
+  ctx.beginPath(); ctx.moveTo(x+w*1.05,y-h*.48); ctx.lineTo(x+w*1.18,y-h*.28); ctx.lineTo(x+w*1.02,y-h*.2); ctx.closePath(); ctx.fill();
+  // Carapace
+  ctx.fillStyle = color; ctx.shadowBlur = 20;
+  ctx.beginPath(); ctx.ellipse(x,y,w*.52,h*.54,0,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle = '#1a6a1a';
+  ctx.beginPath(); ctx.ellipse(x,y+h*.08,w*.4,h*.38,0,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle = color;
+  ctx.beginPath(); ctx.ellipse(x,y-h*.06,w*.26,h*.24,0,0,Math.PI*2); ctx.fill();
+  // Eye
+  ctx.fillStyle = glow; ctx.shadowBlur = 24;
+  ctx.beginPath(); ctx.ellipse(x,y-h*.14,w*.22,h*.24,0,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle = '#001400'; ctx.shadowBlur = 0;
+  ctx.beginPath(); ctx.ellipse(x,y-h*.12,w*.12,h*.14,0,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle = glow; ctx.shadowBlur = 10;
+  ctx.beginPath(); ctx.ellipse(x,y-h*.12,w*.06,h*.07,0,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle = '#fff'; ctx.shadowBlur = 0;
+  ctx.beginPath(); ctx.ellipse(x-w*.04,y-h*.15,w*.025,h*.03,0,0,Math.PI*2); ctx.fill();
+}
+
+function _drawBossAlien(b) {
+  const {x, y, w, h, color, glow} = b;
+  ctx.shadowColor = glow; ctx.shadowBlur = 26;
+  // Tentacles
+  ctx.strokeStyle = color; ctx.lineWidth = 4;
+  [-0.48,-0.22,0,0.22,0.48].forEach(a => {
+    const tx = x + a*w*1.3, ty = y + h*1.55;
+    ctx.beginPath(); ctx.moveTo(x+a*w*.28,y+h*.38);
+    ctx.quadraticCurveTo(x+a*w*.7,y+h*.95,tx,ty); ctx.stroke();
+    ctx.fillStyle = glow+'77'; ctx.shadowBlur = 8;
+    ctx.beginPath(); ctx.ellipse(tx,ty,5,8,a,0,Math.PI*2); ctx.fill();
+  });
+  // Disc base
+  ctx.fillStyle = color+'cc'; ctx.shadowBlur = 18;
+  ctx.beginPath(); ctx.ellipse(x,y+h*.18,w*.72,h*.28,0,0,Math.PI*2); ctx.fill();
+  // Dome
+  ctx.fillStyle = color;
+  ctx.beginPath(); ctx.ellipse(x,y-h*.04,w*.52,h*.52,0,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle = '#7711bb';
+  ctx.beginPath(); ctx.ellipse(x,y-h*.1,w*.38,h*.36,0,0,Math.PI*2); ctx.fill();
+  // Dome ribs
+  ctx.strokeStyle = glow+'33'; ctx.lineWidth = 1.5; ctx.shadowBlur = 0;
+  [-2,-1,0,1,2].forEach(i => {
+    ctx.beginPath(); ctx.ellipse(x,y-h*.04,w*.52*(0.25+Math.abs(i)*.15),h*.52,0,0,Math.PI*2); ctx.stroke();
+  });
+  // Eye
+  ctx.fillStyle = glow; ctx.shadowBlur = 28;
+  ctx.beginPath(); ctx.ellipse(x,y-h*.1,w*.25,h*.28,0,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle = '#1a001a'; ctx.shadowBlur = 0;
+  ctx.beginPath(); ctx.ellipse(x,y-h*.08,w*.14,h*.16,0,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle = glow; ctx.shadowBlur = 12;
+  ctx.beginPath(); ctx.ellipse(x,y-h*.08,w*.07,h*.08,0,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle = '#fff'; ctx.shadowBlur = 0;
+  ctx.beginPath(); ctx.ellipse(x-w*.04,y-h*.12,w*.03,h*.04,0,0,Math.PI*2); ctx.fill();
+}
+
+function _drawBossDemon(b) {
+  const {x, y, w, h, color, glow} = b;
+  ctx.shadowColor = glow; ctx.shadowBlur = 30; ctx.fillStyle = color;
+  // Fiery wings
+  ctx.beginPath();
+  ctx.moveTo(x-w*.4,y-h*.08); ctx.lineTo(x-w*1.3,y-h*.55); ctx.lineTo(x-w*1.45,y+h*.12);
+  ctx.lineTo(x-w*1.05,y+h*.4); ctx.lineTo(x-w*.4,y+h*.22); ctx.closePath(); ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(x+w*.4,y-h*.08); ctx.lineTo(x+w*1.3,y-h*.55); ctx.lineTo(x+w*1.45,y+h*.12);
+  ctx.lineTo(x+w*1.05,y+h*.4); ctx.lineTo(x+w*.4,y+h*.22); ctx.closePath(); ctx.fill();
+  // Wing inner glow
+  ctx.fillStyle = glow+'33'; ctx.shadowBlur = 0;
+  ctx.beginPath(); ctx.moveTo(x-w*.5,y-h*.04); ctx.lineTo(x-w*1.2,y-h*.38); ctx.lineTo(x-w*1.28,y+h*.12); ctx.lineTo(x-w*.5,y+h*.18); ctx.closePath(); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(x+w*.5,y-h*.04); ctx.lineTo(x+w*1.2,y-h*.38); ctx.lineTo(x+w*1.28,y+h*.12); ctx.lineTo(x+w*.5,y+h*.18); ctx.closePath(); ctx.fill();
+  // Main skull face
+  ctx.fillStyle = color; ctx.shadowBlur = 22;
+  ctx.beginPath();
+  ctx.moveTo(x-w*.5,y-h*.5); ctx.lineTo(x+w*.5,y-h*.5); ctx.lineTo(x+w*.5,y+h*.3);
+  ctx.lineTo(x+w*.28,y+h*.5); ctx.lineTo(x-w*.28,y+h*.5); ctx.lineTo(x-w*.5,y+h*.3);
+  ctx.closePath(); ctx.fill();
+  ctx.fillStyle = '#550000';
+  ctx.beginPath();
+  ctx.moveTo(x-w*.38,y-h*.4); ctx.lineTo(x+w*.38,y-h*.4); ctx.lineTo(x+w*.38,y+h*.22);
+  ctx.lineTo(x+w*.22,y+h*.42); ctx.lineTo(x-w*.22,y+h*.42); ctx.lineTo(x-w*.38,y+h*.22);
+  ctx.closePath(); ctx.fill();
+  // Horns
+  ctx.fillStyle = color; ctx.shadowBlur = 18;
+  ctx.beginPath(); ctx.moveTo(x-w*.3,y-h*.46); ctx.lineTo(x-w*.46,y-h*.9); ctx.lineTo(x-w*.18,y-h*.48); ctx.closePath(); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(x+w*.3,y-h*.46); ctx.lineTo(x+w*.46,y-h*.9); ctx.lineTo(x+w*.18,y-h*.48); ctx.closePath(); ctx.fill();
+  // Eyes
+  ctx.fillStyle = glow; ctx.shadowBlur = 24;
+  ctx.beginPath(); ctx.ellipse(x-w*.2,y-h*.12,w*.13,h*.14,0,0,Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(x+w*.2,y-h*.12,w*.13,h*.14,0,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle = '#fff'; ctx.shadowBlur = 0;
+  ctx.beginPath(); ctx.ellipse(x-w*.22,y-h*.14,w*.04,h*.05,0,0,Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(x+w*.18,y-h*.14,w*.04,h*.05,0,0,Math.PI*2); ctx.fill();
+  // Teeth
+  ctx.fillStyle = glow+'cc'; ctx.shadowBlur = 8;
+  [-2,-1,0,1,2].forEach(i => {
+    ctx.beginPath();
+    ctx.moveTo(x+i*w*.16-w*.07,y+h*.38); ctx.lineTo(x+i*w*.16,y+h*.52); ctx.lineTo(x+i*w*.16+w*.07,y+h*.38);
+    ctx.closePath(); ctx.fill();
+  });
+}
+
+function _drawBossDreadnought(b) {
+  const {x, y, w, h, color, glow} = b;
+  ctx.shadowColor = glow; ctx.shadowBlur = 28; ctx.fillStyle = color;
+  // Shoulder armor
+  ctx.beginPath();
+  ctx.moveTo(x-w*.5,y-h*.28); ctx.lineTo(x-w*1.08,y-h*.48); ctx.lineTo(x-w*1.18,y+h*.1);
+  ctx.lineTo(x-w*.78,y+h*.3); ctx.lineTo(x-w*.5,y+h*.18); ctx.closePath(); ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(x+w*.5,y-h*.28); ctx.lineTo(x+w*1.08,y-h*.48); ctx.lineTo(x+w*1.18,y+h*.1);
+  ctx.lineTo(x+w*.78,y+h*.3); ctx.lineTo(x+w*.5,y+h*.18); ctx.closePath(); ctx.fill();
+  // Main hull
+  ctx.beginPath();
+  ctx.moveTo(x-w*.5,y-h*.6); ctx.lineTo(x+w*.5,y-h*.6); ctx.lineTo(x+w*.55,y+h*.6);
+  ctx.lineTo(x-w*.55,y+h*.6); ctx.closePath(); ctx.fill();
+  // Armor plating
+  ctx.fillStyle = '#3a2800';
+  ctx.beginPath();
+  ctx.moveTo(x-w*.42,y-h*.52); ctx.lineTo(x+w*.42,y-h*.52); ctx.lineTo(x+w*.46,y+h*.52);
+  ctx.lineTo(x-w*.46,y+h*.52); ctx.closePath(); ctx.fill();
+  // Seam lines
+  ctx.strokeStyle = color+'88'; ctx.lineWidth = 2; ctx.shadowBlur = 4;
+  [-1,0,1,2].forEach(i => {
+    ctx.beginPath(); ctx.moveTo(x-w*.46,y+i*h*.3); ctx.lineTo(x+w*.46,y+i*h*.3); ctx.stroke();
+  });
+  // Gun barrels (3)
+  ctx.fillStyle = glow; ctx.shadowBlur = 16;
+  ctx.beginPath(); ctx.rect(x-w*.34,y+h*.38,w*.14,h*.28); ctx.fill();
+  ctx.beginPath(); ctx.rect(x-w*.07,y+h*.36,w*.14,h*.3); ctx.fill();
+  ctx.beginPath(); ctx.rect(x+w*.2,y+h*.38,w*.14,h*.28); ctx.fill();
+  // Barrel tips
+  ctx.shadowBlur = 20;
+  ctx.beginPath(); ctx.ellipse(x-w*.27,y+h*.66,w*.08,h*.04,0,0,Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(x,y+h*.66,w*.08,h*.04,0,0,Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(x+w*.27,y+h*.66,w*.08,h*.04,0,0,Math.PI*2); ctx.fill();
+  // Shoulder cannons
+  ctx.shadowBlur = 14;
+  ctx.beginPath(); ctx.rect(x-w*1.0,y-h*.12,w*.24,h*.12); ctx.fill();
+  ctx.beginPath(); ctx.rect(x+w*.76,y-h*.12,w*.24,h*.12); ctx.fill();
+  // Bridge
+  ctx.fillStyle = '#88aaff'; ctx.shadowBlur = 12;
+  ctx.beginPath(); ctx.rect(x-w*.36,y-h*.5,w*.72,h*.14); ctx.fill();
+  ctx.fillStyle = '#ccd8ff'; ctx.shadowBlur = 6;
+  [-2,-1,0,1,2].forEach(i => {
+    ctx.beginPath(); ctx.ellipse(x+i*w*.14,y-h*.43,w*.05,h*.04,0,0,Math.PI*2); ctx.fill();
+  });
+  // Central reactor
+  ctx.fillStyle = glow; ctx.shadowBlur = 24;
+  ctx.beginPath(); ctx.ellipse(x,y,w*.18,h*.16,0,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle = '#fff'; ctx.shadowBlur = 0;
+  ctx.beginPath(); ctx.ellipse(x-w*.03,y-h*.03,w*.06,h*.05,0,0,Math.PI*2); ctx.fill();
+}
+
 function drawBoss(b) {
   ctx.save();
   ctx.shadowColor = b.glow; ctx.shadowBlur = 30;
-
-  ctx.fillStyle = b.color + 'cc';
-  ctx.beginPath(); ctx.moveTo(b.x - b.w/2, b.y); ctx.lineTo(b.x - b.w, b.y + b.h/3); ctx.lineTo(b.x - b.w/4, b.y + b.h/4); ctx.closePath(); ctx.fill();
-  ctx.beginPath(); ctx.moveTo(b.x + b.w/2, b.y); ctx.lineTo(b.x + b.w, b.y + b.h/3); ctx.lineTo(b.x + b.w/4, b.y + b.h/4); ctx.closePath(); ctx.fill();
-
-  ctx.fillStyle = b.color;
-  ctx.beginPath(); ctx.ellipse(b.x, b.y, b.w/2, b.h/2, 0, 0, Math.PI*2); ctx.fill();
-
-  if (b.type === 'spiral' || b.type === 'aimed') {
-    ctx.fillStyle = b.glow + '88';
-    ctx.beginPath(); ctx.ellipse(b.x, b.y - b.h/6, b.w/5, b.h/6, 0, 0, Math.PI*2); ctx.fill();
-    ctx.fillStyle = b.color + '99';
-    ctx.beginPath(); ctx.moveTo(b.x - b.w*0.6, b.y - b.h*0.2); ctx.lineTo(b.x - b.w*1.2, b.y - b.h*0.1); ctx.lineTo(b.x - b.w*0.5, b.y + b.h*0.1); ctx.closePath(); ctx.fill();
-    ctx.beginPath(); ctx.moveTo(b.x + b.w*0.6, b.y - b.h*0.2); ctx.lineTo(b.x + b.w*1.2, b.y - b.h*0.1); ctx.lineTo(b.x + b.w*0.5, b.y + b.h*0.1); ctx.closePath(); ctx.fill();
-  }
-
-  ctx.fillStyle = b.glow; ctx.shadowBlur = 16;
-  ctx.beginPath(); ctx.ellipse(b.x, b.y, b.w/8, b.h/6, 0, 0, Math.PI*2); ctx.fill();
-
-  const bw = b.type === 'minispread' ? 110 : (160 + (b.type !== 'spread' ? 40 : 0));
-  ctx.fillStyle = '#333'; ctx.shadowBlur = 0;
+  if      (b.type === 'minispread') _drawBossCrab(b);
+  else if (b.type === 'spread')     _drawBossAlien(b);
+  else if (b.type === 'spiral')     _drawBossDemon(b);
+  else if (b.type === 'aimed')      _drawBossDreadnought(b);
+  const bw = b.type === 'minispread' ? 110 : (b.type === 'spread' ? 160 : 200);
+  ctx.shadowBlur = 0; ctx.fillStyle = '#333';
   ctx.fillRect(b.x - bw/2, b.y - b.h/2 - 22, bw, 8);
-  ctx.fillStyle = b.glow; ctx.shadowBlur = 6;
+  ctx.fillStyle = b.glow; ctx.shadowColor = b.glow; ctx.shadowBlur = 6;
   ctx.fillRect(b.x - bw/2, b.y - b.h/2 - 22, bw * (b.hp / b.maxHp), 8);
-  ctx.fillStyle = b.glow; ctx.font = 'bold 11px Courier New'; ctx.textAlign = 'center';
+  ctx.fillStyle = b.glow; ctx.font = 'bold 11px Courier New'; ctx.textAlign = 'center'; ctx.shadowBlur = 4;
   ctx.fillText(b.label, b.x, b.y - b.h/2 - 26);
   ctx.restore();
 }
@@ -862,10 +1157,10 @@ function drawShipObj(obj) {
 
 function spawnEnemy() {
   const types = [
-    { w: 32, h: 28, hp: 1, speed: 3.0 + level*0.6, color: '#f44', glowColor: '#f00', pts: 10, wave: false, canShoot: false },
-    { w: 28, h: 24, hp: 1, speed: 5.0 + level*0.8, color: '#fa0', glowColor: '#f80', pts: 15, wave: true,  canShoot: false },
-    { w: 34, h: 28, hp: 2, speed: 2.2 + level*0.5, color: '#1a5a1a', glowColor: '#4f4', pts: 25, wave: false, canShoot: false, isGreen: true, beamTimer: 70 + Math.random()*50, beamActive: 0, beamChargeSounded: false },
-    { w: 40, h: 34, hp: 3, speed: 1.6 + level*0.4, color: '#08f', glowColor: '#06f', pts: 30, wave: false, canShoot: true  },
+    { w: 32, h: 28, hp: 1, speed: 3.0 + level*0.6, color: '#f44', glowColor: '#f00', pts: 10, wave: false, canShoot: false, etype: 0 },
+    { w: 28, h: 24, hp: 1, speed: 5.0 + level*0.8, color: '#fa0', glowColor: '#f80', pts: 15, wave: true,  canShoot: false, etype: 1 },
+    { w: 34, h: 28, hp: 2, speed: 2.2 + level*0.5, color: '#1a5a1a', glowColor: '#4f4', pts: 25, wave: false, canShoot: false, isGreen: true, beamTimer: 70 + Math.random()*50, beamActive: 0, beamChargeSounded: false, etype: 2 },
+    { w: 40, h: 34, hp: 3, speed: 1.6 + level*0.4, color: '#08f', glowColor: '#06f', pts: 30, wave: false, canShoot: true, etype: 3 },
   ];
   const available = level < 2 ? 2 : level < 3 ? 3 : 4;
   const t = types[Math.floor(Math.random() * available)];
@@ -884,8 +1179,8 @@ function spawnBoss(tier) {
   enemies = [];
   bossTurrets = [];
   if (tier.type === 'spiral') {
-    bossTurrets.push({ x: 140, y: 210, w: 40, h: 34, hp: 9, maxHp: 9, shootTimer: 80,  alive: true, pts: 30, color: '#08f', glowColor: '#06f' });
-    bossTurrets.push({ x: W-140, y: 210, w: 40, h: 34, hp: 9, maxHp: 9, shootTimer: 115, alive: true, pts: 30, color: '#08f', glowColor: '#06f' });
+    bossTurrets.push({ x: 140, y: 210, w: 40, h: 34, hp: 9, maxHp: 9, shootTimer: 80,  alive: true, pts: 30, color: '#08f', glowColor: '#06f', etype: 3 });
+    bossTurrets.push({ x: W-140, y: 210, w: 40, h: 34, hp: 9, maxHp: 9, shootTimer: 115, alive: true, pts: 30, color: '#08f', glowColor: '#06f', etype: 3 });
   }
   startMusic(tier.type);
 }
@@ -1383,7 +1678,14 @@ function showOverlay(type) {
     overlay.innerHTML = `
       <h1 style="font-size:28px;letter-spacing:6px">ИЗМЕНЕНИЯ</h1>
       <div class="changelog-wrap">
-        <div class="cl-version">v1.1 — 24.05.26</div>
+        <div class="cl-version">v1.3 — 24.05.26</div>
+        <div class="cl-item">Новые модели кораблей: у игрока — крылья, двигатели, кокпит с бликом</div>
+        <div class="cl-item">Каждый тип врага — уникальная форма: красный (истребитель с передними крыльями), оранжевый (перехватчик-дельта), зелёный (жук-эмиттер с антеннами), синий (бронированный канонир)</div>
+        <div class="cl-item">Мини-босс — механический краб с клешнями и лапами</div>
+        <div class="cl-item">Босс I — инопланетный корабль с куполом, рёбрами и щупальцами</div>
+        <div class="cl-item">Босс II — демон с рогами, пылающими крыльями и зубами</div>
+        <div class="cl-item">Босс III — дредноут с бронёй, тремя орудиями, плечевыми пушками и реактором</div>
+        <div class="cl-version">v1.2 — 24.05.26</div>
         <div class="cl-item">PWA: игра устанавливается на экран телефона как приложение (без браузера, офлайн)</div>
         <div class="cl-item">Иконка в браузерной вкладке — корабль из игры вместо глобуса</div>
         <div class="cl-version">v1.1 — 23.05.26</div>

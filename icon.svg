@@ -1,5 +1,149 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-  <rect width="32" height="32" fill="#020810" rx="5"/>
-  <polygon points="16,3 6,27 11,21 16,23 21,21 26,27" fill="#1af"/>
-  <ellipse cx="16" cy="11" rx="2.8" ry="3.8" fill="#0cf"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="60%" r="80%">
+      <stop offset="0%" stop-color="#071628"/>
+      <stop offset="100%" stop-color="#010508"/>
+    </radialGradient>
+    <linearGradient id="beam-main" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#aaffff" stop-opacity="1"/>
+      <stop offset="60%" stop-color="#00ccff" stop-opacity="0.9"/>
+      <stop offset="100%" stop-color="#00ccff" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="beam-side" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#00ccff" stop-opacity="0.7"/>
+      <stop offset="100%" stop-color="#00ccff" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="ship-body" x1="0.5" y1="0" x2="0.5" y2="1">
+      <stop offset="0%" stop-color="#66eeff"/>
+      <stop offset="45%" stop-color="#0099cc"/>
+      <stop offset="100%" stop-color="#003a5c"/>
+    </linearGradient>
+    <linearGradient id="ship-wing" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#005588"/>
+      <stop offset="100%" stop-color="#001a30"/>
+    </linearGradient>
+    <filter id="glow-xl" x="-80%" y="-80%" width="260%" height="260%">
+      <feGaussianBlur stdDeviation="16" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="glow-lg" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="10" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="glow-sm" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="4" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="blur-only" x="-80%" y="-80%" width="260%" height="260%">
+      <feGaussianBlur stdDeviation="18"/>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="512" height="512" fill="url(#bg)" rx="88"/>
+
+  <!-- Stars -->
+  <circle cx="55"  cy="44"  r="1.8" fill="#fff" opacity="0.9"/>
+  <circle cx="148" cy="28"  r="1.2" fill="#fff" opacity="0.6"/>
+  <circle cx="210" cy="58"  r="2"   fill="#aef" opacity="0.7"/>
+  <circle cx="320" cy="18"  r="1.5" fill="#fff" opacity="0.8"/>
+  <circle cx="440" cy="48"  r="1.2" fill="#fff" opacity="0.5"/>
+  <circle cx="478" cy="118" r="1.6" fill="#fff" opacity="0.7"/>
+  <circle cx="38"  cy="200" r="1"   fill="#fff" opacity="0.4"/>
+  <circle cx="492" cy="260" r="1.4" fill="#aef" opacity="0.5"/>
+  <circle cx="30"  cy="380" r="1.5" fill="#fff" opacity="0.4"/>
+  <circle cx="488" cy="400" r="1"   fill="#fff" opacity="0.35"/>
+  <circle cx="170" cy="160" r="1"   fill="#cef" opacity="0.45"/>
+  <circle cx="360" cy="190" r="1.2" fill="#cef" opacity="0.4"/>
+  <circle cx="90"  cy="310" r="1"   fill="#fff" opacity="0.3"/>
+  <circle cx="460" cy="320" r="1"   fill="#fff" opacity="0.3"/>
+
+  <!-- Beam ambient glow (behind everything) -->
+  <rect x="220" y="36" width="72" height="310" fill="#0cf" opacity="0.06" rx="36" filter="url(#blur-only)"/>
+
+  <!-- Side beams glow background -->
+  <rect x="168" y="68" width="28" height="270" fill="#0cf" opacity="0.06" rx="14" filter="url(#blur-only)"/>
+  <rect x="316" y="68" width="28" height="270" fill="#0cf" opacity="0.06" rx="14" filter="url(#blur-only)"/>
+
+  <!-- Side beams -->
+  <rect x="178" y="68" width="10" height="268" fill="url(#beam-side)" rx="5" filter="url(#glow-lg)"/>
+  <rect x="324" y="68" width="10" height="268" fill="url(#beam-side)" rx="5" filter="url(#glow-lg)"/>
+  <rect x="181" y="68" width="4"  height="268" fill="#cff" opacity="0.7" rx="2"/>
+  <rect x="327" y="68" width="4"  height="268" fill="#cff" opacity="0.7" rx="2"/>
+
+  <!-- Main central beam -->
+  <rect x="245" y="36" width="22" height="305" fill="url(#beam-main)" rx="11" filter="url(#glow-xl)"/>
+  <rect x="252" y="36" width="8"  height="305" fill="#eeffff" opacity="0.85" rx="4"/>
+  <rect x="254" y="36" width="4"  height="305" fill="#ffffff" opacity="0.6"  rx="2"/>
+
+  <!-- Enemy LEFT -->
+  <g filter="url(#glow-sm)">
+    <polygon points="108,50 62,138 80,112 108,124 136,112 154,138" fill="#cc2211"/>
+    <polygon points="62,138 36,160 65,116"  fill="#881100"/>
+    <polygon points="154,138 180,160 151,116" fill="#881100"/>
+    <ellipse cx="108" cy="90"  rx="16" ry="22" fill="#ff5544" opacity="0.9"/>
+    <ellipse cx="108" cy="85"  rx="7"  ry="9"  fill="#ffaaaa" opacity="0.8"/>
+    <ellipse cx="106" cy="82"  rx="3"  ry="4"  fill="#ffdddd" opacity="0.7"/>
+  </g>
+
+  <!-- Enemy RIGHT -->
+  <g filter="url(#glow-sm)">
+    <polygon points="404,50 358,138 376,112 404,124 432,112 450,138" fill="#cc2211"/>
+    <polygon points="358,138 332,160 361,116"  fill="#881100"/>
+    <polygon points="450,138 476,160 447,116" fill="#881100"/>
+    <ellipse cx="404" cy="90"  rx="16" ry="22" fill="#ff5544" opacity="0.9"/>
+    <ellipse cx="404" cy="85"  rx="7"  ry="9"  fill="#ffaaaa" opacity="0.8"/>
+    <ellipse cx="402" cy="82"  rx="3"  ry="4"  fill="#ffdddd" opacity="0.7"/>
+  </g>
+
+  <!-- Bullet sparks near enemies -->
+  <circle cx="82"  cy="148" r="5" fill="#ff8833" filter="url(#glow-sm)" opacity="0.9"/>
+  <circle cx="70"  cy="158" r="3" fill="#ff8833" opacity="0.6"/>
+  <circle cx="96"  cy="155" r="2.5" fill="#ffaa55" opacity="0.5"/>
+  <circle cx="132" cy="150" r="4" fill="#ff8833" filter="url(#glow-sm)" opacity="0.8"/>
+
+  <circle cx="430" cy="148" r="5" fill="#ff8833" filter="url(#glow-sm)" opacity="0.9"/>
+  <circle cx="442" cy="158" r="3" fill="#ff8833" opacity="0.6"/>
+  <circle cx="416" cy="155" r="2.5" fill="#ffaa55" opacity="0.5"/>
+  <circle cx="380" cy="150" r="4" fill="#ff8833" filter="url(#glow-sm)" opacity="0.8"/>
+
+  <!-- Thruster flames -->
+  <ellipse cx="256" cy="446" rx="20" ry="34" fill="#0cf" opacity="0.12" filter="url(#blur-only)"/>
+  <ellipse cx="242" cy="438" rx="7"  ry="18" fill="#0ff" opacity="0.55" filter="url(#glow-sm)"/>
+  <ellipse cx="270" cy="438" rx="7"  ry="18" fill="#0ff" opacity="0.55" filter="url(#glow-sm)"/>
+  <ellipse cx="242" cy="432" rx="3"  ry="8"  fill="#fff" opacity="0.5"/>
+  <ellipse cx="270" cy="432" rx="3"  ry="8"  fill="#fff" opacity="0.5"/>
+
+  <!-- Extended wings (back layer) -->
+  <polygon points="152,414 60,474 162,352" fill="url(#ship-wing)"/>
+  <polygon points="360,414 452,474 350,352" fill="url(#ship-wing)"/>
+  <!-- Wing edge glow -->
+  <line x1="152" y1="414" x2="60"  y2="474" stroke="#0af" stroke-width="2.5" opacity="0.45"/>
+  <line x1="360" y1="414" x2="452" y2="474" stroke="#0af" stroke-width="2.5" opacity="0.45"/>
+
+  <!-- Main ship body -->
+  <polygon points="256,178 152,414 204,364 256,386 308,364 360,414"
+           fill="url(#ship-body)" filter="url(#glow-sm)"/>
+
+  <!-- Body center stripe -->
+  <polygon points="256,196 218,396 238,368 256,380 274,368 294,396" fill="#55ccee" opacity="0.45"/>
+  <polygon points="256,218 238,376 248,360 256,368 264,360 274,376" fill="#99eeff" opacity="0.3"/>
+
+  <!-- Wing inner edges -->
+  <line x1="204" y1="364" x2="152" y2="414" stroke="#44ddff" stroke-width="3.5" opacity="0.75"/>
+  <line x1="308" y1="364" x2="360" y2="414" stroke="#44ddff" stroke-width="3.5" opacity="0.75"/>
+  <line x1="152" y1="414" x2="256" y2="386" stroke="#1aaacc" stroke-width="1.5" opacity="0.35"/>
+  <line x1="360" y1="414" x2="256" y2="386" stroke="#1aaacc" stroke-width="1.5" opacity="0.35"/>
+
+  <!-- Nose spine -->
+  <line x1="256" y1="178" x2="256" y2="340" stroke="#88eeff" stroke-width="3" opacity="0.35"/>
+
+  <!-- Cockpit glow halo -->
+  <ellipse cx="256" cy="294" rx="40" ry="56" fill="#0cf" opacity="0.1" filter="url(#blur-only)"/>
+
+  <!-- Cockpit -->
+  <ellipse cx="256" cy="292" rx="26" ry="38" fill="#0088bb" opacity="0.9"/>
+  <ellipse cx="256" cy="288" rx="18" ry="27" fill="#22bbdd" opacity="0.85"/>
+  <ellipse cx="253" cy="282" rx="10" ry="14" fill="#99eeff" opacity="0.8"/>
+  <ellipse cx="251" cy="278" rx="5"  ry="6"  fill="#ffffff" opacity="0.65"/>
 </svg>
