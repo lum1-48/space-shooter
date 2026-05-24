@@ -442,6 +442,7 @@ let statsEnemiesKilled = 0, statsBossesKilled = 0, statsHitsTaken = 0;
 let screenShake = 0;
 let enemySpawnInterval = 60, enemySpawnTimer = 0;
 let greenFlash = 0;
+let drone = null, droneAngle = 0, plasmaRings = [];
 
 // ── audio ─────────────────────────────────────────────────────────────────────
 
@@ -650,10 +651,41 @@ function initStars() {
   }));
 }
 
+const BOSS_POWERUPS = [
+  // Мини-босс
+  [
+    { id: 'triple',    label: '⚡ ТРОЙНОЙ ВЫСТРЕЛ',   cls: '',          hint: 'Три пули вместо одной' },
+    { id: 'life',      label: '❤ ДОП. ЖИЗНЬ',         cls: 'btn-warn',  hint: '+1 сердце (макс. 5)' },
+    { id: 'companion', label: '● НАПАРНИК',            cls: 'btn-green', hint: 'Корабль-союзник, 2 HP' },
+  ],
+  // Босс I
+  [
+    { id: 'missiles',  label: '🚀 РАКЕТЫ',             cls: '',          hint: 'Самонаводящиеся ракеты' },
+    { id: 'fastshoot', label: '⚡ СКОРОСТРЕЛЬНОСТЬ ×2', cls: 'btn-warn',  hint: 'Вдвое быстрее стрельба' },
+    { id: 'life',      label: '❤ ДОП. ЖИЗНЬ',         cls: 'btn-green', hint: '+1 сердце (макс. 5)' },
+  ],
+  // Босс II
+  [
+    { id: 'shield',    label: '🛡 ЩИТ',               cls: '',          hint: 'Поглощает удар, восст. 8 сек' },
+    { id: 'plasma',    label: '🔮 ПЛАЗМ. ВОЛНА',       cls: 'btn-warn',  hint: 'Кольцо урона каждые 3 сек' },
+    { id: 'companion', label: '● НАПАРНИК',            cls: 'btn-green', hint: 'Ещё один союзник' },
+  ],
+  // Босс III
+  [
+    { id: 'bomb',      label: '💥 БОМБА [Space]',     cls: '',          hint: '3 заряда — уничтожает всё' },
+    { id: 'drone',     label: '🤖 ДРОН',              cls: 'btn-warn',  hint: 'Орбитальный дрон-турель' },
+    { id: 'piercing',  label: '🔫 ПРОНИЗЫВАНИЕ',      cls: 'btn-green', hint: 'Пули проходят сквозь врагов' },
+  ],
+];
+
 function makePlayer(x, color, glowColor) {
   return { x, y: H - 80, w: 36, h: 40, speed: 8.5, lives: 3,
            invincible: 0, hitFlash: 0, shootCooldown: 0, trail: [],
-           tripleShot: false, color, glowColor, alive: true };
+           tripleShot: false, color, glowColor, alive: true,
+           fastShoot: false, shield: 0, shieldMax: 0,
+           missiles: false, missileTimer: 0,
+           plasmaWave: false, waveTimer: 0,
+           piercing: false, bombs: 0 };
 }
 
 function addCompanion() {
@@ -690,6 +722,7 @@ function initGame() {
   bullets = []; enemies = []; particles = [];
   floatingTexts = []; bossTurrets = [];
   statsEnemiesKilled = 0; statsBossesKilled = 0; statsHitsTaken = 0;
+  drone = null; droneAngle = 0; plasmaRings = [];
   updateUI();
 }
 
@@ -1151,6 +1184,14 @@ function drawShipObj(obj) {
     alpha = frame % 10 < 5 ? 0.3 : 1;
   }
   drawShip(obj.x, obj.y, obj.w, obj.h, color, glow, alpha);
+  if (obj.shield > 0 && obj.shieldMax > 0) {
+    const a = Math.min(1, obj.shield / obj.shieldMax);
+    ctx.save(); ctx.globalAlpha = a * 0.45;
+    ctx.strokeStyle = '#0ff'; ctx.lineWidth = 2.5 + a * 2;
+    ctx.shadowColor = '#0ff'; ctx.shadowBlur = 14;
+    ctx.beginPath(); ctx.arc(obj.x, obj.y, obj.w + 10, 0, Math.PI * 2); ctx.stroke();
+    ctx.restore();
+  }
 }
 
 // ── spawn helpers ─────────────────────────────────────────────────────────────
@@ -1257,13 +1298,37 @@ function updatePlayer(dt) {
 
   p1.shootCooldown -= dt;
   if (p1.shootCooldown <= 0) {
-    bullets.push({ x: p1.x, y: p1.y-p1.h/2, vy: -26, fromPlayer: true, color: p1.glowColor });
+    const pc = p1.piercing;
+    bullets.push({ x: p1.x, y: p1.y-p1.h/2, vy: -26, fromPlayer: true, color: p1.glowColor, piercing: pc });
     if (p1.tripleShot || level >= 4) {
-      bullets.push({ x: p1.x-14, y: p1.y, vy: -26, fromPlayer: true, color: p1.glowColor });
-      bullets.push({ x: p1.x+14, y: p1.y, vy: -26, fromPlayer: true, color: p1.glowColor });
+      bullets.push({ x: p1.x-14, y: p1.y, vy: -26, fromPlayer: true, color: p1.glowColor, piercing: pc });
+      bullets.push({ x: p1.x+14, y: p1.y, vy: -26, fromPlayer: true, color: p1.glowColor, piercing: pc });
     }
     sndShoot();
-    p1.shootCooldown = level >= 5 ? 10 : 15;
+    const base = level >= 5 ? 10 : 15;
+    p1.shootCooldown = p1.fastShoot ? base * 0.5 : base;
+  }
+  // Missiles
+  if (p1.missiles) {
+    p1.missileTimer -= dt;
+    if (p1.missileTimer <= 0) {
+      let tgt = null, nd = Infinity;
+      for (const e of enemies) { if (e.alive) { const d = Math.hypot(e.x-p1.x, e.y-p1.y); if (d<nd){nd=d;tgt=e;} } }
+      if (!tgt && bossActive && boss && boss.alive) tgt = boss;
+      const a = tgt ? Math.atan2(tgt.y-p1.y, tgt.x-p1.x) : -Math.PI/2;
+      bullets.push({ x: p1.x, y: p1.y, vx: Math.cos(a)*12, vy: Math.sin(a)*12, fromPlayer: true, color: '#f80', missile: true, damage: 3, _px: p1.x, _py: p1.y });
+      p1.missileTimer = 55;
+    }
+  }
+  // Shield regen
+  if (p1.shieldMax > 0 && p1.shield < p1.shieldMax) p1.shield = Math.min(p1.shieldMax, p1.shield + (1/480) * dt);
+  // Plasma wave timer
+  if (p1.plasmaWave) {
+    p1.waveTimer -= dt;
+    if (p1.waveTimer <= 0) {
+      plasmaRings.push({ x: p1.x, y: p1.y, r: 20, maxR: 240, life: 1 });
+      p1.waveTimer = 180;
+    }
   }
   if (p1.invincible > 0) p1.invincible -= dt;
   if (p1.hitFlash  > 0) p1.hitFlash  -= dt;
@@ -1294,6 +1359,10 @@ function updateCompanions(dt) {
 
 function hitPlayer() {
   if (!p1 || p1.invincible > 0) return;
+  if (p1.shield > 0) {
+    p1.shield = 0; p1.invincible = 80; screenShake = 6;
+    spawnParticles(p1.x, p1.y, '#0ff', 16); return;
+  }
   p1.lives--;
   statsHitsTaken++;
   screenShake = 10;
@@ -1337,9 +1406,51 @@ function update(dt) {
     if (enemySpawnTimer >= enemySpawnInterval) { spawnEnemy(); enemySpawnTimer = 0; }
   }
 
+  // Plasma rings expand + damage
+  plasmaRings = plasmaRings.filter(ring => {
+    ring.r += 5.5 * dt;
+    ring.life = 1 - ring.r / ring.maxR;
+    for (const e of enemies) {
+      if (e.alive && Math.abs(Math.hypot(e.x-ring.x, e.y-ring.y) - ring.r) < 15) {
+        e.hp -= dt; // continuous damage as ring passes through
+        if (e.hp <= 0) { e.alive = false; score += e.pts; spawnParticles(e.x, e.y, e.glowColor, 14); floatingTexts.push({ x: e.x, y: e.y-10, pts: e.pts, color: e.glowColor, life: 1 }); statsEnemiesKilled++; if (e.isGreen) sndGreenDie(); else sndEnemyDie(); updateUI(); }
+      }
+    }
+    return ring.life > 0;
+  });
+
+  // Drone orbit + shoot
+  if (drone && p1 && p1.lives > 0) {
+    droneAngle += 0.05 * dt;
+    drone.x = p1.x + Math.cos(droneAngle) * 58;
+    drone.y = p1.y + Math.sin(droneAngle) * 48;
+    drone.shootCooldown -= dt;
+    if (drone.shootCooldown <= 0) {
+      let tgt = null, nd = Infinity;
+      for (const e of enemies) { if (e.alive) { const d = Math.hypot(e.x-drone.x, e.y-drone.y); if (d<nd){nd=d;tgt={x:e.x,y:e.y};} } }
+      if (bossActive && boss && boss.alive && !boss.intro) { const d = Math.hypot(boss.x-drone.x, boss.y-drone.y); if (d<nd) tgt={x:boss.x,y:boss.y}; }
+      if (tgt) {
+        const a = Math.atan2(tgt.y-drone.y, tgt.x-drone.x);
+        bullets.push({ x: drone.x, y: drone.y, vx: Math.cos(a)*22, vy: Math.sin(a)*22, fromPlayer: true, color: '#ff0', _px: drone.x, _py: drone.y });
+      }
+      drone.shootCooldown = 20;
+    }
+  }
+
   // Move all bullets (store prev pos for swept collision)
   bullets = bullets.filter(b => {
     b._py = b.y; b._px = b.x;
+    // Missile homing
+    if (b.missile && b.fromPlayer) {
+      let tgt = null, nd = Infinity;
+      for (const e of enemies) { if (e.alive) { const d = Math.hypot(e.x-b.x, e.y-b.y); if (d<nd){nd=d;tgt={x:e.x,y:e.y};} } }
+      if (bossActive && boss && boss.alive && !boss.intro) { const d = Math.hypot(boss.x-b.x, boss.y-b.y); if (!tgt || d<nd) tgt={x:boss.x,y:boss.y}; }
+      if (tgt) {
+        const a = Math.atan2(tgt.y-b.y, tgt.x-b.x);
+        b.vx = (b.vx||0) + Math.cos(a)*4.5*dt; b.vy += Math.sin(a)*4.5*dt;
+        const spd = Math.hypot(b.vx, b.vy); if (spd>22){b.vx=b.vx/spd*22;b.vy=b.vy/spd*22;}
+      }
+    }
     b.y += b.vy * dt; if (b.vx) b.x += b.vx * dt;
     return b.y > -20 && b.y < H+20 && b.x > -20 && b.x < W+20;
   });
@@ -1434,7 +1545,7 @@ function update(dt) {
       if (!b.fromPlayer) return true;
       const scy = (b.y + b._py) / 2, sch = Math.abs(b.y - b._py) + 16;
       if (boss && boss.alive && !boss.intro && rect(b.x, scy, 4, sch, boss.x, boss.y, boss.w, boss.h)) {
-        boss.hp--;
+        boss.hp -= (b.damage || 1);
         spawnParticles(b.x, b.y, boss.glow, 4);
         if (boss.hp <= 0) {
           spawnParticles(boss.x, boss.y, boss.glow, 60);
@@ -1500,10 +1611,10 @@ function update(dt) {
     const scy = (b.y + b._py) / 2, sch = Math.abs(b.y - b._py) + 16;
     for (const e of enemies) {
       if (e.alive && rect(b.x, scy, 4, sch, e.x, e.y, e.w, e.h)) {
-        e.hp--;
+        e.hp -= (b.damage || 1);
         spawnParticles(b.x, b.y, e.glowColor, 6);
         if (e.hp <= 0) { e.alive = false; spawnParticles(e.x, e.y, e.glowColor, 16); score += e.pts; floatingTexts.push({ x: e.x, y: e.y - 10, pts: e.pts, color: e.glowColor, life: 1 }); statsEnemiesKilled++; if (e.isGreen) sndGreenDie(); else sndEnemyDie(); updateUI(); }
-        return false;
+        if (!b.piercing) return false;
       }
     }
     return true;
@@ -1591,6 +1702,27 @@ function draw() {
     ctx.restore();
   }
 
+  // Plasma rings
+  for (const ring of plasmaRings) {
+    ctx.save();
+    ctx.globalAlpha = ring.life * 0.6;
+    ctx.strokeStyle = '#a0f'; ctx.lineWidth = 3;
+    ctx.shadowColor = '#c0f'; ctx.shadowBlur = 16;
+    ctx.beginPath(); ctx.arc(ring.x, ring.y, ring.r, 0, Math.PI * 2); ctx.stroke();
+    ctx.restore();
+  }
+
+  // Drone
+  if (drone) {
+    ctx.save();
+    ctx.shadowColor = '#ff0'; ctx.shadowBlur = 12;
+    ctx.fillStyle = '#ff0';
+    ctx.beginPath(); ctx.arc(drone.x, drone.y, 7, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#880';
+    ctx.beginPath(); ctx.arc(drone.x, drone.y, 4, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+  }
+
   // Floating score texts
   for (const ft of floatingTexts) {
     ctx.save();
@@ -1600,6 +1732,16 @@ function draw() {
     ctx.font = 'bold 14px Courier New';
     ctx.textAlign = 'center';
     ctx.fillText('+' + ft.pts, ft.x, ft.y);
+    ctx.restore();
+  }
+
+  // Bomb count
+  if (p1 && p1.bombs > 0) {
+    ctx.save();
+    ctx.shadowColor = '#f80'; ctx.shadowBlur = 10;
+    ctx.fillStyle = '#f80';
+    ctx.font = 'bold 13px Courier New'; ctx.textAlign = 'left';
+    ctx.fillText('💥 ' + p1.bombs, 12, H - 20);
     ctx.restore();
   }
 
@@ -1678,16 +1820,17 @@ function showOverlay(type) {
     overlay.innerHTML = `
       <h1 style="font-size:28px;letter-spacing:6px">ИЗМЕНЕНИЯ</h1>
       <div class="changelog-wrap">
-        <div class="cl-version">v1.3 — 24.05.26</div>
-        <div class="cl-item">Новые модели кораблей: у игрока — крылья, двигатели, кокпит с бликом</div>
-        <div class="cl-item">Каждый тип врага — уникальная форма: красный (истребитель с передними крыльями), оранжевый (перехватчик-дельта), зелёный (жук-эмиттер с антеннами), синий (бронированный канонир)</div>
-        <div class="cl-item">Мини-босс — механический краб с клешнями и лапами</div>
-        <div class="cl-item">Босс I — инопланетный корабль с куполом, рёбрами и щупальцами</div>
-        <div class="cl-item">Босс II — демон с рогами, пылающими крыльями и зубами</div>
-        <div class="cl-item">Босс III — дредноут с бронёй, тремя орудиями, плечевыми пушками и реактором</div>
         <div class="cl-version">v1.2 — 24.05.26</div>
         <div class="cl-item">PWA: игра устанавливается на экран телефона как приложение (без браузера, офлайн)</div>
         <div class="cl-item">Иконка в браузерной вкладке — корабль из игры вместо глобуса</div>
+        <div class="cl-item">Новые модели кораблей: у игрока — крылья, двигатели, кокпит с бликом</div>
+        <div class="cl-item">Каждый тип врага — уникальная форма: красный (истребитель), оранжевый (перехватчик-дельта), зелёный (жук-эмиттер), синий (бронированный канонир)</div>
+        <div class="cl-item">Мини-босс — краб; Босс I — пришелец; Босс II — демон; Босс III — дредноут</div>
+        <div class="cl-item">Уникальные усиления для каждого босса — 3 варианта на выбор</div>
+        <div class="cl-item">Ракеты (самонаводящиеся), быстрая стрельба ×2, щит (поглощает удар), плазменная волна</div>
+        <div class="cl-item">Бомба [Space]: 3 заряда — уничтожает всех врагов и бьёт по боссу</div>
+        <div class="cl-item">Дрон: орбитальный турель, автоматически стреляет по врагам</div>
+        <div class="cl-item">Пронизывание: пули проходят сквозь всех врагов</div>
         <div class="cl-version">v1.1 — 23.05.26</div>
         <div class="cl-item">Зелёные враги: испускают диагональный луч-крест, наносящий контактный урон (появляются с уровня 2)</div>
         <div class="cl-item">Звук зарядки луча: нарастающий вой + эскалирующие биппы</div>
@@ -1769,16 +1912,18 @@ function showOverlay(type) {
 
   } else if (type === 'powerup') {
     state = 'powerup';
+    const puSet = BOSS_POWERUPS[Math.min(nextBossIdx - 1, BOSS_POWERUPS.length - 1)];
     overlay.innerHTML = `
       <h1 style="font-size:28px;color:#4f4;text-shadow:0 0 20px #4f4;letter-spacing:4px">ВЫБЕРИ УСИЛЕНИЕ</h1>
       <div class="btn-col">
-        <button id="pu1">⚡ ТРОЙНОЙ ВЫСТРЕЛ</button>
-        <button id="pu2" class="btn-warn">❤ ДОПОЛНИТЕЛЬНАЯ ЖИЗНЬ</button>
-        <button id="pu3" class="btn-green">● НАПАРНИК</button>
+        ${puSet.map((pu, i) => `
+          <button id="pu${i}" class="${pu.cls}">
+            ${pu.label}<br><span style="font-size:11px;opacity:0.7;letter-spacing:1px">${pu.hint}</span>
+          </button>`).join('')}
       </div>`;
-    document.getElementById('pu1').addEventListener('click', () => applyPowerup('triple'));
-    document.getElementById('pu2').addEventListener('click', () => applyPowerup('life'));
-    document.getElementById('pu3').addEventListener('click', () => applyPowerup('companion'));
+    puSet.forEach((pu, i) => {
+      document.getElementById('pu' + i).addEventListener('click', () => applyPowerup(pu.id));
+    });
   }
 }
 
@@ -1786,6 +1931,13 @@ function applyPowerup(type) {
   if (type === 'triple')    { p1.tripleShot = true; }
   if (type === 'life')      { p1.lives = Math.min(p1.lives + 1, 5); }
   if (type === 'companion') { addCompanion(); }
+  if (type === 'missiles')  { p1.missiles = true; }
+  if (type === 'fastshoot') { p1.fastShoot = true; }
+  if (type === 'shield')    { p1.shieldMax = 1; p1.shield = 1; }
+  if (type === 'plasma')    { p1.plasmaWave = true; }
+  if (type === 'bomb')      { p1.bombs += 3; }
+  if (type === 'drone')     { drone = { x: p1.x, y: p1.y, shootCooldown: 20 }; }
+  if (type === 'piercing')  { p1.piercing = true; }
   level++;
   enemySpawnInterval = Math.max(17, Math.round((70 - level * 7) / 1.5));
   updateUI();
@@ -1820,6 +1972,15 @@ window.addEventListener('keydown', e => {
   if (e.code === 'Escape') {
     if (state === 'playing') { showOverlay('paused'); pauseBtn.textContent = '▶'; }
     else if (state === 'paused') resumeGame();
+  }
+  if (e.code === 'Space' && state === 'playing' && p1 && p1.bombs > 0) {
+    p1.bombs--;
+    enemies.forEach(en => { en.alive = false; spawnParticles(en.x, en.y, en.glowColor, 12); score += en.pts; statsEnemiesKilled++; });
+    enemies = [];
+    if (bossActive && boss && boss.alive) { boss.hp = Math.max(1, boss.hp - 30); }
+    plasmaRings.push({ x: W / 2, y: H / 2, r: 20, maxR: Math.max(W, H), life: 1 });
+    screenShake = 14;
+    updateUI();
   }
 });
 window.addEventListener('keyup', e => { keys[e.code] = false; });
