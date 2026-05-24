@@ -4,6 +4,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Space Shooter</title>
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon.svg">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#00ccff">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Space Shooter">
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -1377,6 +1383,9 @@ function showOverlay(type) {
     overlay.innerHTML = `
       <h1 style="font-size:28px;letter-spacing:6px">ИЗМЕНЕНИЯ</h1>
       <div class="changelog-wrap">
+        <div class="cl-version">v1.1 — 24.05.26</div>
+        <div class="cl-item">PWA: игра устанавливается на экран телефона как приложение (без браузера, офлайн)</div>
+        <div class="cl-item">Иконка в браузерной вкладке — корабль из игры вместо глобуса</div>
         <div class="cl-version">v1.1 — 23.05.26</div>
         <div class="cl-item">Зелёные враги: испускают диагональный луч-крест, наносящий контактный урон (появляются с уровня 2)</div>
         <div class="cl-item">Звук зарядки луча: нарастающий вой + эскалирующие биппы</div>
@@ -1528,6 +1537,10 @@ initStars();
 showOverlay('menu');
 recordEl.textContent = bestScore() || '—';
 requestAnimationFrame(loop);
+
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./sw.js').catch(() => {});
+}
 </script>
 </body>
 </html>
