@@ -1359,7 +1359,7 @@ function updateCompanions(dt) {
 
 function hitPlayer() {
   if (!p1 || p1.invincible > 0) return;
-  if (p1.shield > 0) {
+  if (p1.shield >= p1.shieldMax && p1.shieldMax > 0) {
     p1.shield = 0; p1.invincible = 80; screenShake = 6;
     spawnParticles(p1.x, p1.y, '#0ff', 16); return;
   }
@@ -1859,6 +1859,7 @@ function showOverlay(type) {
         <div class="cl-item">Босс III (5000 очков): меньше случайных пуль (10 → 5)</div>
         <div class="cl-item">Турреты Босса II: HP увеличено в 3 раза (3 → 9)</div>
         <div class="cl-item">Исправлено: пули больше не пролетают сквозь врагов (swept collision)</div>
+        <div class="cl-item">Исправлено: щит теперь защищает только при полной зарядке — во время регенерации игрок уязвим</div>
 
         <div class="cl-version">v1.0 — 22.05.26</div>
         <div class="cl-item">Базовый геймплей: корабль, враги, боссы</div>
