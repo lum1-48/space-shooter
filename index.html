@@ -4,9 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Space Shooter</title>
-<link rel="icon" href="icon.svg" type="image/svg+xml">
-<link rel="apple-touch-icon" href="icon.svg">
-<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon.svg?v=4" type="image/svg+xml">
+<link rel="shortcut icon" href="icon.svg?v=4" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon.svg?v=4">
+<link rel="manifest" href="manifest.json?v=4">
 <meta name="theme-color" content="#00ccff">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Space Shooter">
@@ -426,7 +427,7 @@ canvas.width = W; canvas.height = H;
 const BOSS_TIERS = [
   { scoreThreshold:  500, hp:  25, type: 'minispread', pts:  150, dx: 4.0, color: '#1a3a1a', glow: '#4f4', label: 'МИНИ-БОСС', bw: 80, bh: 55 },
   { scoreThreshold: 1000, hp:  60, type: 'spread',     pts:  300, dx: 4.0, color: '#7f00ff', glow: '#f0f', label: 'BOSS I'   },
-  { scoreThreshold: 2500, hp: 140, type: 'spiral',     pts:  700, dx: 5.6, color: '#cc2200', glow: '#f84', label: 'BOSS II'  },
+  { scoreThreshold: 2500, hp: 165, type: 'spiral',     pts:  700, dx: 6.3, color: '#cc2200', glow: '#f84', label: 'BOSS II'  },
   { scoreThreshold: 5000, hp: 260, type: 'aimed',      pts: 1500, dx: 7.0, color: '#b8860b', glow: '#ff0', label: 'BOSS III' },
 ];
 
@@ -437,10 +438,10 @@ let keys = {};
 let bossActive = false, boss = null;
 let nextBossIdx = 0;
 let frame = 0, time = 0;
-let floatingTexts = [], bossTurrets = [];
+let floatingTexts = [], bossTurrets = [], collectibles = [];
 let statsEnemiesKilled = 0, statsBossesKilled = 0, statsHitsTaken = 0;
 let screenShake = 0;
-let enemySpawnInterval = 60, enemySpawnTimer = 0;
+let enemySpawnInterval = 60, enemySpawnTimer = 0, rareEnemyTimer = 0;
 let greenFlash = 0;
 let drone = null, droneAngle = 0, plasmaRings = [];
 
@@ -504,6 +505,12 @@ function sndBossDie() {
   nt(200, 'sawtooth', 0.10, 0.4,  0,     35);
   nt(500, 'square',   0.06, 0.25, 0.03,  80);
   nt(120, 'sine',     0.10, 0.6,  0.05,  18);
+}
+
+function sndPickupLife() {
+  nt(523, 'sine', 0.07, 0.12, 0, 523);
+  nt(659, 'sine', 0.07, 0.12, 0.07, 784);
+  nt(784, 'sine', 0.09, 0.18, 0.14, 1047);
 }
 
 // ── music themes (step-sequencer) ─────────────────────────────────────────────
@@ -716,11 +723,11 @@ function initGame() {
   score = 0; level = 1;
   bossActive = false; boss = null;
   nextBossIdx = 0;
-  enemySpawnInterval = 40; enemySpawnTimer = 0;
+  enemySpawnInterval = 40; enemySpawnTimer = 0; rareEnemyTimer = 0;
   companions = [];
   p1 = makePlayer(W / 2, '#1af', '#0cf');
   bullets = []; enemies = []; particles = [];
-  floatingTexts = []; bossTurrets = [];
+  floatingTexts = []; bossTurrets = []; collectibles = [];
   statsEnemiesKilled = 0; statsBossesKilled = 0; statsHitsTaken = 0;
   drone = null; droneAngle = 0; plasmaRings = [];
   updateUI();
@@ -914,12 +921,45 @@ function _drawEnemyGunship(e) {
   ctx.beginPath(); ctx.ellipse(x - w*.05, y - h*.24, w*.07, h*.04, 0, 0, Math.PI*2); ctx.fill();
 }
 
+function _drawEnemyHarvester(e) {
+  const {x, y, w, h, color, glowColor} = e;
+  ctx.shadowColor = glowColor; ctx.shadowBlur = 18;
+  ctx.fillStyle = color;
+  // Wide oval hull
+  ctx.beginPath();
+  ctx.ellipse(x, y, w * .5, h * .44, 0, 0, Math.PI * 2);
+  ctx.fill();
+  // Dark inner body
+  ctx.fillStyle = '#332200';
+  ctx.beginPath();
+  ctx.ellipse(x, y, w * .35, h * .30, 0, 0, Math.PI * 2);
+  ctx.fill();
+  // Cargo heart glow
+  ctx.shadowColor = '#ff4444'; ctx.shadowBlur = 14;
+  ctx.fillStyle = '#ff4455';
+  ctx.font = `${h * .55}px serif`;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText('♥', x, y + 1);
+  ctx.textBaseline = 'alphabetic';
+  // Side fins
+  ctx.shadowColor = glowColor; ctx.shadowBlur = 10;
+  ctx.fillStyle = color;
+  ctx.beginPath(); ctx.moveTo(x - w*.5, y - h*.1); ctx.lineTo(x - w*.72, y + h*.22); ctx.lineTo(x - w*.5, y + h*.22); ctx.closePath(); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(x + w*.5, y - h*.1); ctx.lineTo(x + w*.72, y + h*.22); ctx.lineTo(x + w*.5, y + h*.22); ctx.closePath(); ctx.fill();
+  // Engine glow
+  ctx.shadowColor = glowColor; ctx.shadowBlur = 20;
+  ctx.fillStyle = glowColor;
+  ctx.beginPath(); ctx.ellipse(x - w*.18, y + h*.42, w*.08, h*.1, 0, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(x + w*.18, y + h*.42, w*.08, h*.1, 0, 0, Math.PI*2); ctx.fill();
+}
+
 function drawEnemy(e) {
   ctx.save();
   if      (e.etype === 0) _drawEnemyFighter(e);
   else if (e.etype === 1) _drawEnemyInterceptor(e);
   else if (e.etype === 2) _drawEnemyEmitter(e);
   else if (e.etype === 3) _drawEnemyGunship(e);
+  else if (e.etype === 4) _drawEnemyHarvester(e);
   ctx.restore();
 }
 
@@ -1220,8 +1260,8 @@ function spawnBoss(tier) {
   enemies = [];
   bossTurrets = [];
   if (tier.type === 'spiral') {
-    bossTurrets.push({ x: 140, y: 210, w: 40, h: 34, hp: 9, maxHp: 9, shootTimer: 80,  alive: true, pts: 30, color: '#08f', glowColor: '#06f', etype: 3 });
-    bossTurrets.push({ x: W-140, y: 210, w: 40, h: 34, hp: 9, maxHp: 9, shootTimer: 115, alive: true, pts: 30, color: '#08f', glowColor: '#06f', etype: 3 });
+    bossTurrets.push({ x: 140, y: -160+90, w: 40, h: 34, hp: 9, maxHp: 9, shootTimer: 80,  alive: true, intro: true, pts: 30, color: '#08f', glowColor: '#06f', etype: 3 });
+    bossTurrets.push({ x: W-140, y: -160+90, w: 40, h: 34, hp: 9, maxHp: 9, shootTimer: 115, alive: true, intro: true, pts: 30, color: '#08f', glowColor: '#06f', etype: 3 });
   }
   startMusic(tier.type);
 }
@@ -1241,11 +1281,11 @@ function bossShoot() {
     }
     boss.shootTimer = 30;
   } else if (boss.type === 'spiral') {
-    for (let i = 0; i < 5; i++) {
-      const a = boss.shootAngle + (i/5)*Math.PI*2;
-      boss.bullets.push({ x: boss.x, y: boss.y, vx: Math.cos(a)*7.0, vy: Math.sin(a)*7.0 });
+    for (let i = 0; i < 6; i++) {
+      const a = boss.shootAngle + (i/6)*Math.PI*2;
+      boss.bullets.push({ x: boss.x, y: boss.y, vx: Math.cos(a)*7.5, vy: Math.sin(a)*7.5 });
     }
-    boss.shootAngle += 0.3; boss.shootTimer = 28;
+    boss.shootAngle += 0.28; boss.shootTimer = 24;
   } else if (boss.type === 'aimed') {
     if (p1 && p1.lives > 0) {
       const a = Math.atan2(p1.y - boss.y, p1.x - boss.x);
@@ -1404,6 +1444,14 @@ function update(dt) {
   if (!bossActive) {
     enemySpawnTimer += dt;
     if (enemySpawnTimer >= enemySpawnInterval) { spawnEnemy(); enemySpawnTimer = 0; }
+    rareEnemyTimer += dt;
+    if (rareEnemyTimer >= 10800) {
+      enemies.push({ w: 38, h: 32, hp: 3, speed: 2.2, color: '#cc8800', glowColor: '#ffcc00',
+                     pts: 75, wave: true, canShoot: false, etype: 4, isRare: true,
+                     x: Math.random()*(W-80)+40, y: -30,
+                     waveOffset: Math.random()*Math.PI*2, shootTimer: 999, alive: true });
+      rareEnemyTimer = 0;
+    }
   }
 
   // Plasma rings expand + damage
@@ -1413,7 +1461,7 @@ function update(dt) {
     for (const e of enemies) {
       if (e.alive && Math.abs(Math.hypot(e.x-ring.x, e.y-ring.y) - ring.r) < 15) {
         e.hp -= dt; // continuous damage as ring passes through
-        if (e.hp <= 0) { e.alive = false; score += e.pts; spawnParticles(e.x, e.y, e.glowColor, 14); floatingTexts.push({ x: e.x, y: e.y-10, pts: e.pts, color: e.glowColor, life: 1 }); statsEnemiesKilled++; if (e.isGreen) sndGreenDie(); else sndEnemyDie(); updateUI(); }
+        if (e.hp <= 0) { e.alive = false; score += e.pts; spawnParticles(e.x, e.y, e.glowColor, 14); floatingTexts.push({ x: e.x, y: e.y-10, pts: e.pts, color: e.glowColor, life: 1 }); statsEnemiesKilled++; if (e.isGreen) sndGreenDie(); else sndEnemyDie(); if (e.isRare) collectibles.push({ x: e.x, y: e.y, vy: 1.8, type: 'life', alive: true }); updateUI(); }
       }
     }
     return ring.life > 0;
@@ -1516,11 +1564,13 @@ function update(dt) {
         const tt = Math.min(1, boss.introTimer / 65);
         const ease = tt < 0.5 ? 4*tt*tt*tt : 1 - Math.pow(-2*tt+2, 3)/2;
         boss.y = boss.startY + (boss.introMidY - boss.startY) * ease;
+        bossTurrets.forEach(t => { t.y = boss.y + 90; });
         if (tt >= 1) { boss.introPhase = 2; boss.introTimer = 0; }
       } else {
         const tt = Math.min(1, boss.introTimer / 50);
         boss.y = boss.introMidY + (120 - boss.introMidY) * (1 - (1-tt)*(1-tt));
-        if (tt >= 1) { boss.intro = false; boss.y = 120; screenShake = 8; }
+        bossTurrets.forEach(t => { t.y = boss.y + 90; });
+        if (tt >= 1) { boss.intro = false; boss.y = 120; bossTurrets.forEach(t => { t.intro = false; }); screenShake = 8; }
       }
     } else {
       boss.x += boss.dx * dt;
@@ -1563,7 +1613,7 @@ function update(dt) {
         return false;
       }
       for (const t of bossTurrets) {
-        if (t.alive && rect(b.x, scy, 4, sch, t.x, t.y, t.w, t.h)) {
+        if (t.alive && !t.intro && rect(b.x, scy, 4, sch, t.x, t.y, t.w, t.h)) {
           t.hp--;
           spawnParticles(b.x, b.y, t.glowColor, 4);
           if (t.hp <= 0) {
@@ -1592,6 +1642,7 @@ function update(dt) {
     // Turrets update
     for (const t of bossTurrets) {
       if (!t.alive) continue;
+      if (t.intro) continue;
       t.shootTimer -= dt;
       if (t.shootTimer <= 0 && p1 && p1.lives > 0) {
         const a = Math.atan2(p1.y - t.y, p1.x - t.x);
@@ -1613,7 +1664,7 @@ function update(dt) {
       if (e.alive && rect(b.x, scy, 4, sch, e.x, e.y, e.w, e.h)) {
         e.hp -= (b.damage || 1);
         spawnParticles(b.x, b.y, e.glowColor, 6);
-        if (e.hp <= 0) { e.alive = false; spawnParticles(e.x, e.y, e.glowColor, 16); score += e.pts; floatingTexts.push({ x: e.x, y: e.y - 10, pts: e.pts, color: e.glowColor, life: 1 }); statsEnemiesKilled++; if (e.isGreen) sndGreenDie(); else sndEnemyDie(); updateUI(); }
+        if (e.hp <= 0) { e.alive = false; spawnParticles(e.x, e.y, e.glowColor, 16); score += e.pts; floatingTexts.push({ x: e.x, y: e.y - 10, pts: e.pts, color: e.glowColor, life: 1 }); statsEnemiesKilled++; if (e.isGreen) sndGreenDie(); else sndEnemyDie(); if (e.isRare) collectibles.push({ x: e.x, y: e.y, vy: 1.8, type: 'life', alive: true }); updateUI(); }
         if (!b.piercing) return false;
       }
     }
@@ -1632,6 +1683,19 @@ function update(dt) {
 
   for (const p of particles) { p.x += p.vx * dt; p.y += p.vy * dt; p.vx *= Math.pow(0.95, dt); p.vy *= Math.pow(0.95, dt); p.life -= p.decay * dt; }
   particles = particles.filter(p => p.life > 0);
+
+  // Collectibles (life drops)
+  for (const col of collectibles) {
+    col.y += col.vy * dt;
+    if (p1 && p1.lives > 0 && rect(p1.x, p1.y, p1.w, p1.h, col.x, col.y, 22, 22)) {
+      col.alive = false;
+      p1.lives = Math.min(p1.lives + 1, 5);
+      updateUI();
+      sndPickupLife();
+      floatingTexts.push({ x: col.x, y: col.y - 14, pts: '♥', color: '#ff4455', life: 1.8 });
+    }
+  }
+  collectibles = collectibles.filter(c => c.alive && c.y < H + 40);
 }
 
 // ── draw ──────────────────────────────────────────────────────────────────────
@@ -1664,13 +1728,23 @@ function draw() {
   // Turrets
   for (const t of bossTurrets) {
     if (!t.alive) continue;
-    drawEnemy(t);
-    const tbw = 32, tbx = t.x - tbw / 2, tby = t.y - t.h / 2 - 10;
     ctx.save();
-    ctx.fillStyle = '#1a2a3a'; ctx.fillRect(tbx, tby, tbw, 4);
-    ctx.shadowColor = t.glowColor; ctx.shadowBlur = 5; ctx.fillStyle = t.glowColor;
-    ctx.fillRect(tbx, tby, tbw * (t.hp / t.maxHp), 4);
+    if (t.intro) ctx.globalAlpha = frame % 12 < 6 ? 0.45 : 1;
+    drawEnemy(t);
+    if (t.intro) {
+      ctx.shadowColor = '#0ff'; ctx.shadowBlur = 18; ctx.strokeStyle = '#0ff';
+      ctx.lineWidth = 2; ctx.globalAlpha = 0.55;
+      ctx.beginPath(); ctx.arc(t.x, t.y, t.w * 0.7, 0, Math.PI * 2); ctx.stroke();
+    }
     ctx.restore();
+    if (!t.intro) {
+      const tbw = 32, tbx = t.x - tbw / 2, tby = t.y - t.h / 2 - 10;
+      ctx.save();
+      ctx.fillStyle = '#1a2a3a'; ctx.fillRect(tbx, tby, tbw, 4);
+      ctx.shadowColor = t.glowColor; ctx.shadowBlur = 5; ctx.fillStyle = t.glowColor;
+      ctx.fillRect(tbx, tby, tbw * (t.hp / t.maxHp), 4);
+      ctx.restore();
+    }
   }
 
   if (bossActive && boss && boss.alive) {
@@ -1720,6 +1794,20 @@ function draw() {
     ctx.beginPath(); ctx.arc(drone.x, drone.y, 7, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = '#880';
     ctx.beginPath(); ctx.arc(drone.x, drone.y, 4, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+  }
+
+  // Life collectibles (dropped by rare enemy)
+  for (const col of collectibles) {
+    ctx.save();
+    const pulse = 0.85 + Math.sin(frame * 0.18) * 0.15;
+    ctx.globalAlpha = pulse;
+    ctx.shadowColor = '#ff4455'; ctx.shadowBlur = 16;
+    ctx.fillStyle = '#ff4455';
+    ctx.font = 'bold 22px serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('♥', col.x, col.y);
+    ctx.textBaseline = 'alphabetic';
     ctx.restore();
   }
 
@@ -1820,6 +1908,12 @@ function showOverlay(type) {
     overlay.innerHTML = `
       <h1 style="font-size:28px;letter-spacing:6px">ИЗМЕНЕНИЯ</h1>
       <div class="changelog-wrap">
+        <div class="cl-version">v1.4 — 25.05.26</div>
+        <div class="cl-item">Жнец ★: редкий враг раз в 3 минуты — при убийстве роняет жизнь ♥</div>
+        <div class="cl-item">Турели Boss II теперь влетают вместе с боссом и неуязвимы в анимации появления</div>
+        <div class="cl-item">Boss II (2500): +25 HP (140→165), 6 пуль в спирали вместо 5, чуть быстрее</div>
+        <div class="cl-item">Исправлено: щит теперь защищает только при полной зарядке — во время регенерации игрок уязвим</div>
+        <div class="cl-item">Иконка в закладках браузера обновлена до новой (корабль)</div>
         <div class="cl-version">v1.2 — 24.05.26</div>
         <div class="cl-item">PWA: игра устанавливается на экран телефона как приложение (без браузера, офлайн)</div>
         <div class="cl-item">Иконка в браузерной вкладке — корабль из игры вместо глобуса</div>
@@ -1859,7 +1953,6 @@ function showOverlay(type) {
         <div class="cl-item">Босс III (5000 очков): меньше случайных пуль (10 → 5)</div>
         <div class="cl-item">Турреты Босса II: HP увеличено в 3 раза (3 → 9)</div>
         <div class="cl-item">Исправлено: пули больше не пролетают сквозь врагов (swept collision)</div>
-        <div class="cl-item">Исправлено: щит теперь защищает только при полной зарядке — во время регенерации игрок уязвим</div>
 
         <div class="cl-version">v1.0 — 22.05.26</div>
         <div class="cl-item">Базовый геймплей: корабль, враги, боссы</div>
